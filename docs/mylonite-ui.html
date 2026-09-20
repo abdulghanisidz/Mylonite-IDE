@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Mylonite IDE — UI Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+/* ── Reset ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:#121212;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh;padding:24px 16px 40px}
+
+/* ── CSS Variables ── */
+:root{
+  --bg:#1e1e1e;--surface:#252526;--surface2:#2d2d30;--border:#3e3e42;
+  --primary:#7c9ef5;--secondary:#4ec9b0;--error:#f44747;--warning:#ffcc00;
+  --fg:#d4d4d4;--fg-dim:#858585;--fg-faint:#555;
+  --kw:#569cd6;--fn:#dcdcaa;--str:#ce9178;--cm:#6a9955;--nm:#b5cea8;
+}
+
+/* ── Page header ── */
+.page-title{color:var(--primary);font-size:1.15rem;font-weight:700;margin-bottom:6px;letter-spacing:-.3px}
+.page-sub{color:var(--fg-dim);font-size:.82rem;margin-bottom:20px}
+
+/* ── Phone shell ── */
+.phone-outer{
+  width:390px;
+  background:#0a0a0a;
+  border-radius:44px;
+  border:2px solid #333;
+  padding:12px;
+  box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 0 1px #222,inset 0 0 0 1px #444;
+  position:relative;
+}
+/* side buttons */
+.phone-outer::before{content:'';position:absolute;right:-4px;top:90px;width:3px;height:36px;background:#333;border-radius:2px}
+.phone-outer::after{content:'';position:absolute;left:-4px;top:80px;width:3px;height:24px;background:#333;border-radius:2px;box-shadow:0 34px 0 #333,0 62px 0 #333}
+
+.phone-inner{
+  background:var(--bg);
+  border-radius:34px;
+  overflow:hidden;
+  height:800px;
+  position:relative;
+  display:flex;flex-direction:column;
+}
+/* Dynamic island */
+.island{
+  position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  width:120px;height:34px;background:#0a0a0a;border-radius:20px;
+  z-index:20;display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.island .cam{width:12px;height:12px;background:#111;border-radius:50%;border:2px solid #1a1a1a}
+.island .mic{width:6px;height:6px;background:#1a1a1a;border-radius:3px}
+
+/* ── Status bar ── */
+.status-bar{
+  height:50px;background:var(--surface);
+  display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 20px 8px;font-size:12px;color:var(--fg-dim);
+  flex-shrink:0;font-family:'Inter',sans-serif;font-weight:500;
+}
+.status-icons{display:flex;align-items:center;gap:5px;font-size:10px}
+
+/* ── App bar ── */
+.app-bar{
+  height:52px;background:var(--surface);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0;
+}
+.app-bar .ab-title{flex:1;font-size:16px;font-weight:600;color:var(--fg)}
+.app-bar .ab-icon{
+  width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+  border-radius:8px;cursor:pointer;color:var(--fg-dim);font-size:18px;
+  transition:background .15s;flex-shrink:0;
+}
+.app-bar .ab-icon:hover{background:var(--surface2)}
+.app-bar .ab-icon.primary{color:var(--primary)}
+.app-bar .ab-icon.green{color:var(--secondary)}
+
+/* ── Screen container ── */
+.screen{flex:1;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.screen-content{flex:1;overflow-y:auto;overflow-x:hidden}
+.screen-content::-webkit-scrollbar{width:3px}
+.screen-content::-webkit-scrollbar-track{background:transparent}
+.screen-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ── Bottom nav ── */
+.bottom-nav{
+  height:64px;background:var(--surface);border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-around;
+  flex-shrink:0;padding-bottom:4px;
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  cursor:pointer;padding:6px 12px;border-radius:10px;transition:all .15s;flex:1;
+}
+.nav-item:hover{background:rgba(124,158,245,.08)}
+.nav-item .ni{font-size:22px;line-height:1;transition:transform .15s}
+.nav-item .nl{font-size:10px;font-weight:500;color:var(--fg-dim);font-family:'Inter',sans-serif}
+.nav-item.active .ni{transform:scale(1.1)}
+.nav-item.active .nl{color:var(--primary)}
+
+/* ── Shared components ── */
+.section-pad{padding:16px}
+.divider{height:1px;background:var(--border)}
+
+/* card */
+.card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;transition:border-color .2s}
+.card:hover{border-color:var(--primary)}
+
+/* list tile */
+.list-tile{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;cursor:pointer;transition:background .15s;
+}
+.list-tile:hover{background:rgba(255,255,255,.03)}
+.lt-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.lt-content{flex:1;min-width:0}
+.lt-title{font-size:14px;font-weight:500;color:var(--fg)}
+.lt-sub{font-size:12px;color:var(--fg-dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lt-arrow{color:var(--fg-faint);font-size:18px;flex-shrink:0}
+
+/* chip */
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid var(--border);background:var(--surface2);color:var(--fg-dim)}
+.chip.primary{background:rgba(124,158,245,.12);border-color:rgba(124,158,245,.3);color:var(--primary)}
+.chip.green{background:rgba(78,201,176,.12);border-color:rgba(78,201,176,.3);color:var(--secondary)}
+.chip.yellow{background:rgba(255,204,0,.12);border-color:rgba(255,204,0,.3);color:var(--warning)}
+.chip.red{background:rgba(244,71,71,.12);border-color:rgba(244,71,71,.3);color:var(--error)}
+
+/* btn */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .2s;font-family:'Inter',sans-serif}
+.btn-p{background:var(--primary);color:#000}.btn-p:hover{background:#96b2ff}
+.btn-o{background:transparent;color:var(--fg);border:1.5px solid var(--border)}.btn-o:hover{border-color:var(--primary)}
+.btn-g{background:var(--secondary);color:#000}
+.btn-r{background:transparent;color:var(--error);border:1.5px solid var(--error)}
+
+/* fab */
+.fab{
+  position:absolute;bottom:16px;right:16px;
+  background:var(--primary);color:#000;border-radius:16px;
+  padding:10px 18px;font-size:13px;font-weight:700;
+  display:flex;align-items:center;gap:6px;cursor:pointer;
+  box-shadow:0 4px 20px rgba(124,158,245,.3);
+  font-family:'Inter',sans-serif;
+}
+
+/* section header */
+.section-hdr{
+  font-size:11px;font-weight:700;letter-spacing:1.2px;
+  text-transform:uppercase;color:var(--primary);
+  padding:16px 16px 6px;
+}
+
+/* switch */
+.switch-tile{display:flex;align-items:center;padding:10px 16px;gap:12px}
+.switch-tile .sw-content{flex:1}
+.switch-tile .sw-title{font-size:14px;color:var(--fg)}
+.switch-tile .sw-sub{font-size:12px;color:var(--fg-dim);margin-top:1px}
+.sw-toggle{width:44px;height:24px;background:var(--border);border-radius:12px;cursor:pointer;transition:.2s;flex-shrink:0;position:relative}
+.sw-toggle.on{background:var(--primary)}
+.sw-toggle::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.sw-toggle.on::after{transform:translateX(20px)}
+
+/* ── HOME screen ── */
+#screen-home .hero-title{font-size:22px;font-weight:700;color:var(--primary);padding:16px 16px 4px}
+#screen-home .hero-sub{font-size:13px;color:var(--fg-dim);padding:0 16px 20px}
+#screen-home .active-banner{
+  margin:0 16px 16px;padding:14px;background:rgba(124,158,245,.08);
+  border:1px solid rgba(124,158,245,.25);border-radius:10px;
+  display:flex;align-items:center;gap:10px;
+}
+#screen-home .ab-info{flex:1}
+#screen-home .ab-name{font-size:14px;font-weight:600;color:var(--primary)}
+#screen-home .ab-lang{font-size:11px;color:rgba(124,158,245,.7)}
+#screen-home .ab-btn{font-size:12px;color:var(--primary);cursor:pointer;padding:4px 8px;background:transparent;border:none;font-family:'Inter',sans-serif;font-weight:600}
+#screen-home .recents-section{padding:0 16px}
+#screen-home .rec-item{display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer}
+#screen-home .rec-avatar{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+#screen-home .rec-name{font-size:13px;font-weight:500;color:var(--fg)}
+#screen-home .rec-date{font-size:11px;color:var(--fg-dim)}
+#screen-home .status-strip{
+  margin:16px;padding:10px 12px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:8px;
+  display:flex;align-items:center;gap:8px;
+}
+#screen-home .ss-dot{width:8px;height:8px;border-radius:50%;background:var(--warning);flex-shrink:0}
+#screen-home .ss-text{font-size:12px;color:var(--fg-dim);flex:1}
+#screen-home .ss-ver{font-size:11px;color:var(--fg-faint)}
+
+/* ── PROJECTS screen ── */
+#screen-projects .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;gap:12px}
+#screen-projects .empty-icon{font-size:56px;opacity:.2}
+#screen-projects .empty-title{font-size:16px;font-weight:500;color:rgba(212,212,212,.5)}
+#screen-projects .empty-sub{font-size:13px;color:rgba(212,212,212,.4)}
+.proj-item{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;transition:background .15s}
+.proj-item:hover{background:rgba(255,255,255,.03)}
+.proj-avatar{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0}
+.proj-info{flex:1;min-width:0}
+.proj-name{font-size:14px;font-weight:600;color:var(--fg)}
+.proj-meta{font-size:12px;color:var(--fg-dim);margin-top:2px}
+.proj-menu{color:var(--fg-faint);font-size:20px;cursor:pointer;padding:4px;flex-shrink:0}
+.proj-divider{height:1px;background:var(--border);margin-left:72px}
+
+/* ── EDITOR screen ── */
+.editor-tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0}
+.editor-tabs::-webkit-scrollbar{height:0}
+.etab{padding:8px 14px;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--fg-dim);cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;border-top:2px solid transparent;transition:all .15s;flex-shrink:0}
+.etab.active{color:var(--fg);border-top-color:var(--primary);background:var(--bg)}
+.etab .dirty-dot{width:6px;height:6px;border-radius:50%;background:var(--warning)}
+.etab .close-x{font-size:10px;opacity:.5;transition:.15s}
+.etab .close-x:hover{opacity:1}
+.editor-body{display:flex;flex:1;overflow:hidden;background:var(--bg);font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7}
+.gutter{background:var(--surface);width:48px;padding:6px 6px 6px 4px;text-align:right;color:var(--border);font-size:11px;line-height:1.7;flex-shrink:0;border-right:1px solid var(--border);user-select:none}
+.gutter .ln{display:block}
+.gutter .ln.err{color:var(--error)}
+.code-area{flex:1;padding:6px 10px;overflow:auto;color:var(--fg)}
+.code-area::-webkit-scrollbar{width:4px}
+.code-area::-webkit-scrollbar-thumb{background:var(--border)}
+.cl{display:block;line-height:1.7;white-space:pre}
+.cl.err-line{background:rgba(244,71,71,.09)}
+.kw{color:#569cd6}.fn{color:#dcdcaa}.str{color:#ce9178}.cm{color:#6a9955}.nm{color:#b5cea8}.op{color:#d4d4d4}.cls{color:#4ec9b0}
+/* diff banner */
+.diff-banner{background:rgba(124,158,245,.1);border-bottom:1px solid rgba(124,158,245,.2);padding:8px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.diff-banner .db-icon{font-size:14px;color:var(--primary)}
+.diff-banner .db-text{flex:1;font-size:12px;color:var(--fg);font-family:'Inter',sans-serif}
+.diff-banner .db-reject{font-size:12px;color:var(--error);padding:4px 8px;background:transparent;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600}
+.diff-banner .db-accept{font-size:12px;background:var(--secondary);color:#000;padding:5px 12px;border:none;border-radius:6px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600}
+/* search bar */
+.search-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:6px 8px;display:flex;align-items:center;gap:6px;flex-shrink:0;height:42px}
+.search-input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--fg);font-size:12px;font-family:'JetBrains Mono',monospace;outline:none}
+.search-input:focus{border-color:var(--primary)}
+.search-count{font-size:11px;color:var(--fg-dim);font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.stoggle{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:4px;cursor:pointer;font-size:12px;color:var(--fg-faint)}
+.stoggle.on{background:rgba(124,158,245,.2);color:var(--primary)}
+/* editor status bar */
+.ed-statusbar{height:22px;background:var(--surface);border-top:1px solid var(--border);padding:0 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.ed-status-left{display:flex;align-items:center;gap:6px;font-size:11px;font-family:'JetBrains Mono',monospace}
+.ed-status-ok{color:var(--secondary)}.ed-status-err{color:var(--error)}.ed-status-warn{color:var(--warning)}
+.ed-status-right{font-size:11px;color:var(--fg-faint);font-family:'JetBrains Mono',monospace}
+
+/* ── EXPLORER screen ── */
+.proj-header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border)}
+.ph-folder{font-size:16px;color:var(--warning)}
+.ph-name{flex:1;font-size:14px;font-weight:600;color:var(--fg)}
+.ph-lang{font-size:11px;color:var(--primary)}
+.file-item{display:flex;align-items:center;gap:6px;padding:5px 0;cursor:pointer;border-radius:4px;transition:background .12s;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--fg)}
+.file-item:hover{background:rgba(255,255,255,.04)}
+.fi-chevron{font-size:12px;color:rgba(212,212,212,.35);width:16px;text-align:center;flex-shrink:0}
+.fi-icon{font-size:14px;flex-shrink:0}
+.fi-name{flex:1}
+.fi-size{font-size:10px;color:rgba(212,212,212,.3)}
+.empty-workspace{display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px;gap:10px}
+.ew-icon{font-size:42px;opacity:.2}
+.ew-text{font-size:13px;color:rgba(212,212,212,.4);font-family:'Inter',sans-serif}
+.ew-btn{font-size:12px;color:var(--primary);background:transparent;border:1.5px solid rgba(124,158,245,.3);border-radius:6px;padding:6px 14px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600}
+
+/* ── TERMINAL screen ── */
+.terminal-body{flex:1;background:#0d0d0d;padding:10px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.6}
+.terminal-body::-webkit-scrollbar{width:3px}
+.terminal-body::-webkit-scrollbar-thumb{background:var(--border)}
+.tl{display:block}
+.tl-cmd{color:var(--primary)}.tl-out{color:var(--fg)}.tl-err{color:var(--error)}.tl-ok{color:var(--secondary)}.tl-dim{color:var(--fg-faint)}
+.stdin-bar{background:var(--surface);border-top:1px solid var(--border);padding:6px 10px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.stdin-prompt{color:var(--primary);font-size:14px;font-family:'JetBrains Mono',monospace}
+.stdin-input{flex:1;background:transparent;border:none;outline:none;color:var(--fg);font-size:12px;font-family:'JetBrains Mono',monospace}
+.stdin-send{color:var(--primary);font-size:18px;cursor:pointer;flex-shrink:0;opacity:.6}
+.stdin-send:hover{opacity:1}
+.term-proc-chip{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 10px;font-size:11px;color:var(--fg-dim);font-family:'Inter',sans-serif}
+
+/* ── AGENT screen ── */
+.agent-provider-chip{display:flex;align-items:center;gap:5px;padding:4px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-size:11px;color:var(--fg-dim);font-family:'Inter',sans-serif}
+.agent-chip-icon{font-size:13px}
+.agent-messages{flex:1;overflow-y:auto;padding:14px 12px}
+.agent-messages::-webkit-scrollbar{width:3px}
+.agent-messages::-webkit-scrollbar-thumb{background:var(--border)}
+.msg{display:flex;gap:8px;margin-bottom:14px;align-items:flex-start}
+.msg.user{flex-direction:row-reverse}
+.msg-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.msg-avatar.ai{background:rgba(124,158,245,.15);color:var(--primary)}
+.msg-avatar.user-av{background:rgba(124,158,245,.25);color:var(--primary)}
+.msg-bubble{max-width:78%;padding:10px 12px;font-size:12.5px;line-height:1.55;font-family:'Inter',sans-serif}
+.msg-bubble.ai{background:var(--surface2);border-radius:4px 12px 12px 12px;color:var(--fg)}
+.msg-bubble.user{background:rgba(124,158,245,.18);border-radius:12px 4px 12px 12px;color:var(--fg)}
+.msg-pre{white-space:pre-line}
+.agent-input-bar{background:var(--surface2);border-top:1px solid var(--border);padding:8px 10px;display:flex;align-items:flex-end;gap:8px;flex-shrink:0}
+.agent-input{flex:1;background:transparent;border:none;outline:none;color:var(--fg);font-size:13px;font-family:'Inter',sans-serif;resize:none;min-height:36px;max-height:80px;padding:6px 4px;line-height:1.5}
+.agent-send{width:36px;height:36px;background:var(--primary);border:none;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0}
+.agent-status-bar{background:rgba(124,158,245,.1);border-bottom:1px solid rgba(124,158,245,.2);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.spinning{animation:spin .8s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── SETTINGS screen ── */
+.settings-list{padding-bottom:24px}
+.settings-tile{display:flex;align-items:center;padding:10px 16px;gap:12px;cursor:pointer;transition:background .15s}
+.settings-tile:hover{background:rgba(255,255,255,.03)}
+.st-content{flex:1}
+.st-title{font-size:14px;color:var(--fg)}
+.st-sub{font-size:12px;color:var(--fg-dim);margin-top:2px}
+.st-trailing{color:var(--fg-faint);font-size:18px;flex-shrink:0}
+.st-value{font-size:13px;color:var(--primary);flex-shrink:0}
+.font-ctrl{display:flex;align-items:center;gap:6px}
+.font-btn{width:28px;height:28px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--fg);font-size:16px;font-family:'Inter',sans-serif}
+.font-val{font-size:13px;color:var(--fg);min-width:24px;text-align:center;font-family:'Inter',sans-serif}
+
+/* ── RUNTIME MANAGER ── */
+.runtime-card{margin-bottom:12px}
+.rc-header{display:flex;align-items:center;gap:8px}
+.rc-icon{font-size:18px;color:var(--primary)}
+.rc-title{flex:1;font-size:15px;font-weight:600;color:var(--fg)}
+.rc-status{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.rc-not-installed{background:rgba(212,212,212,.08);color:var(--fg-dim)}
+.rc-installed{background:rgba(78,201,176,.12);color:var(--secondary)}
+.rc-installing{background:rgba(124,158,245,.12);color:var(--primary)}
+.info-rows{margin:10px 0}
+.info-row{display:flex;font-size:12px;padding:2px 0}
+.ir-label{width:90px;color:var(--fg-dim)}.ir-val{color:var(--fg)}
+.rc-actions{display:flex;gap:8px;margin-top:12px}
+
+/* ── MODEL MANAGER ── */
+.storage-card{margin-bottom:14px}
+.sc-inner{display:flex;align-items:center;gap:12px}
+.sc-icon{font-size:22px;color:var(--primary)}
+.sc-title{font-size:14px;font-weight:600;color:var(--fg)}
+.sc-sub{font-size:12px;color:var(--fg-dim);margin-top:2px}
+.model-card{margin-bottom:12px}
+.mc-header{display:flex;align-items:flex-start;gap:8px}
+.mc-info{flex:1}
+.mc-name{font-size:14px;font-weight:600;color:var(--fg)}
+.mc-sub{font-size:12px;color:var(--fg-dim);margin-top:2px}
+.mc-profile{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.profile-tiny{background:rgba(78,201,176,.12);color:var(--secondary)}
+.profile-balanced{background:rgba(124,158,245,.12);color:var(--primary)}
+.profile-power{background:rgba(255,204,0,.12);color:var(--warning)}
+.stats-row{display:flex;flex-wrap:wrap;gap:12px;margin:10px 0}
+.stat-chip{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--fg-dim)}
+.stat-icon{font-size:13px}
+.mc-actions{display:flex;gap:8px;margin-top:10px}
+
+/* ── Overlay screens (settings, runtime, model pushed as modal-like) ── */
+.overlay-screen{
+  position:absolute;inset:0;z-index:10;background:var(--bg);
+  display:none;flex-direction:column;
+}
+.overlay-screen.visible{display:flex}
+.overlay-app-bar{height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 4px 0 0;gap:4px;flex-shrink:0}
+.back-btn{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--fg);cursor:pointer;flex-shrink:0}
+.overlay-title{flex:1;font-size:16px;font-weight:600;color:var(--fg)}
+
+/* ── Navigation page transition ── */
+.tab-screen{display:none;flex-direction:column;height:100%}
+.tab-screen.active{display:flex}
+
+/* ── Section label ── */
+.recommended-label{
+  font-size:11px;font-weight:700;letter-spacing:1.2px;
+  text-transform:uppercase;color:var(--primary);
+  padding:16px 16px 6px;
+}
+</style>
+</head>
+<body>
+
+<div class="page-title">⬡ Mylonite IDE</div>
+<p class="page-sub">Interactive UI demo · Click the bottom nav to explore all screens</p>
+
+<div class="phone-outer">
+  <div class="phone-inner" id="app">
+
+    <!-- Dynamic island -->
+    <div class="island"><div class="cam"></div><div class="mic"></div></div>
+
+    <!-- STATUS BAR -->
+    <div class="status-bar">
+      <span>9:41</span>
+      <div class="status-icons">
+        <span>▲ ●●●</span>
+        <span>🔋</span>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════
+         TAB SCREENS
+    ════════════════════════════════════════════════════════ -->
+
+    <!-- ── HOME ── -->
+    <div class="tab-screen active" id="screen-home">
+      <div class="app-bar">
+        <span class="ab-title">Mylonite IDE</span>
+        <span class="ab-icon" onclick="openOverlay('settings')">⚙</span>
+      </div>
+      <div class="screen-content">
+        <!-- Hero -->
+        <div class="hero-title">Mylonite IDE</div>
+        <div class="hero-sub">Edit, run, and debug code — fully offline.</div>
+
+        <!-- Quick actions -->
+        <div class="list-tile" onclick="goTab('projects')">
+          <div class="lt-icon" style="background:rgba(124,158,245,.12)">➕</div>
+          <div class="lt-content">
+            <div class="lt-title">New Project</div>
+            <div class="lt-sub">Start a Python or JavaScript project</div>
+          </div>
+          <span class="lt-arrow">›</span>
+        </div>
+        <div class="list-tile" onclick="goTab('projects')">
+          <div class="lt-icon" style="background:rgba(124,158,245,.12)">📂</div>
+          <div class="lt-content">
+            <div class="lt-title">All Projects</div>
+            <div class="lt-sub">2 projects</div>
+          </div>
+          <span class="lt-arrow">›</span>
+        </div>
+        <div class="list-tile" onclick="openOverlay('model-manager')">
+          <div class="lt-icon" style="background:rgba(78,201,176,.1)">🧠</div>
+          <div class="lt-content">
+            <div class="lt-title">Model Manager</div>
+            <div class="lt-sub">Download and activate local AI models</div>
+          </div>
+          <span class="lt-arrow">›</span>
+        </div>
+
+        <!-- Recent projects -->
+        <div class="section-hdr">Recent Projects</div>
+        <div class="recents-section" id="screen-home">
+          <div class="rec-item" onclick="goTab('explorer')">
+            <div class="rec-avatar" style="background:rgba(53,114,165,.2);color:#3572A5">Py</div>
+            <div>
+              <div class="rec-name">my-calculator</div>
+              <div class="rec-date">Opened 2m ago</div>
+            </div>
+            <div style="margin-left:auto"><div class="chip green" style="font-size:10px">open</div></div>
+          </div>
+          <div class="rec-item" onclick="goTab('explorer')">
+            <div class="rec-avatar" style="background:rgba(241,224,90,.15);color:#c8b827">JS</div>
+            <div>
+              <div class="rec-name">web-scraper</div>
+              <div class="rec-date">Opened 1h ago</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status strip -->
+        <div class="status-strip">
+          <div class="ss-dot"></div>
+          <span class="ss-text">No model loaded</span>
+          <span class="ss-ver">v0.1.0 · Phase 3</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── EDITOR ── -->
+    <div class="tab-screen" id="screen-editor">
+      <div class="app-bar">
+        <!-- Tab bar -->
+        <div class="editor-tabs" style="flex:1;background:transparent;border:none;padding-top:4px">
+          <div class="etab active">
+            <span class="dirty-dot"></span>
+            <span>main.py</span>
+            <span class="close-x">✕</span>
+          </div>
+          <div class="etab" onclick="document.querySelectorAll('.etab').forEach(t=>t.classList.remove('active'));this.classList.add('active')">
+            <span>utils.py</span>
+            <span class="close-x">✕</span>
+          </div>
+        </div>
+        <span class="ab-icon" title="Undo" style="opacity:.4">↩</span>
+        <span class="ab-icon" title="Redo" style="opacity:.4">↪</span>
+        <span class="ab-icon" id="search-toggle" onclick="toggleSearch()" title="Find">🔍</span>
+        <span class="ab-icon" style="color:var(--warning)" title="Save">💾</span>
+        <span class="ab-icon green" title="Run">▶</span>
+      </div>
+
+      <!-- AI Diff banner -->
+      <div class="diff-banner" id="diff-banner" style="display:none">
+        <span class="db-icon">🤖</span>
+        <span class="db-text">AI proposed a change to this file.</span>
+        <button class="db-reject" onclick="document.getElementById('diff-banner').style.display='none'">Reject</button>
+        <button class="db-accept" onclick="document.getElementById('diff-banner').style.display='none'">Accept</button>
+      </div>
+
+      <!-- Search bar -->
+      <div class="search-bar" id="search-bar" style="display:none">
+        <input class="search-input" placeholder="Find…" oninput="updateSearchCount(this.value)"/>
+        <span class="search-count" id="search-count">No results</span>
+        <span class="stoggle" title="Regex">.*</span>
+        <span class="stoggle" title="Case">Aa</span>
+        <span style="color:var(--fg-dim);cursor:pointer;font-size:14px;padding:2px 4px">↑</span>
+        <span style="color:var(--fg-dim);cursor:pointer;font-size:14px;padding:2px 4px">↓</span>
+        <span style="color:var(--fg-dim);cursor:pointer;font-size:16px;padding:2px 4px" onclick="toggleSearch()">✕</span>
+      </div>
+
+      <!-- Editor body -->
+      <div class="screen-content" style="display:flex;flex-direction:column;overflow:hidden">
+        <div class="editor-body" style="flex:1">
+          <div class="gutter">
+            <span class="ln">1</span><span class="ln">2</span><span class="ln">3</span>
+            <span class="ln">4</span><span class="ln">5</span><span class="ln">6</span>
+            <span class="ln">7</span><span class="ln">8</span><span class="ln">9</span>
+            <span class="ln err">10</span><span class="ln">11</span><span class="ln">12</span>
+            <span class="ln">13</span><span class="ln">14</span><span class="ln">15</span>
+            <span class="ln">16</span><span class="ln">17</span><span class="ln">18</span>
+          </div>
+          <div class="code-area">
+            <span class="cl"><span class="cm"># Mylonite IDE — calculator demo</span></span>
+            <span class="cl">&nbsp;</span>
+            <span class="cl"><span class="kw">def</span> <span class="fn">add</span>(<span class="nm">a</span>, <span class="nm">b</span>): <span class="kw">return</span> <span class="nm">a</span> + <span class="nm">b</span></span>
+            <span class="cl"><span class="kw">def</span> <span class="fn">subtract</span>(<span class="nm">a</span>, <span class="nm">b</span>): <span class="kw">return</span> <span class="nm">a</span> - <span class="nm">b</span></span>
+            <span class="cl"><span class="kw">def</span> <span class="fn">multiply</span>(<span class="nm">a</span>, <span class="nm">b</span>): <span class="kw">return</span> <span class="nm">a</span> * <span class="nm">b</span></span>
+            <span class="cl">&nbsp;</span>
+            <span class="cl"><span class="kw">def</span> <span class="fn">divide</span>(<span class="nm">a</span>, <span class="nm">b</span>):</span>
+            <span class="cl">    <span class="kw">if</span> <span class="nm">b</span> == <span class="nm">0</span>:</span>
+            <span class="cl">        <span class="kw">raise</span> <span class="cls">ValueError</span>(<span class="str">'div by 0'</span>)</span>
+            <span class="cl err-line">    <span class="kw">return</span> <span class="nm">a</span> <span class="op">////</span> <span class="nm">b</span>   <span class="cm"># ← error here</span></span>
+            <span class="cl">&nbsp;</span>
+            <span class="cl"><span class="kw">if</span> __name__ == <span class="str">'__main__'</span>:</span>
+            <span class="cl">    <span class="fn">print</span>(<span class="str">'Calculator'</span>)</span>
+            <span class="cl">    <span class="fn">print</span>(<span class="fn">add</span>(<span class="nm">2</span>, <span class="nm">3</span>))</span>
+            <span class="cl">    <span class="fn">print</span>(<span class="fn">subtract</span>(<span class="nm">10</span>, <span class="nm">4</span>))</span>
+            <span class="cl">    <span class="fn">print</span>(<span class="fn">multiply</span>(<span class="nm">3</span>, <span class="nm">7</span>))</span>
+            <span class="cl">    <span class="fn">print</span>(<span class="fn">divide</span>(<span class="nm">15</span>, <span class="nm">3</span>))</span>
+          </div>
+        </div>
+        <div class="ed-statusbar">
+          <div class="ed-status-left">
+            <span class="ed-status-err">⊗ 1</span>
+            <span class="ed-status-warn">⚠ 0</span>
+          </div>
+          <div class="ed-status-right">Python · UTF-8 · LF</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── EXPLORER ── -->
+    <div class="tab-screen" id="screen-explorer">
+      <div class="app-bar">
+        <span class="ab-title">Explorer</span>
+        <span class="ab-icon" title="New File">📄+</span>
+        <span class="ab-icon" title="New Folder">📁+</span>
+        <span class="ab-icon" title="Refresh">↺</span>
+      </div>
+      <div class="proj-header">
+        <span class="ph-folder">📁</span>
+        <span class="ph-name">my-calculator</span>
+        <span class="ph-lang">Python</span>
+      </div>
+      <div class="divider"></div>
+      <div class="screen-content" style="padding:4px 10px">
+        <!-- Files -->
+        <div class="file-item" onclick="goTab('editor')" style="padding-left:8px">
+          <span class="fi-chevron"></span>
+          <span class="fi-icon">🐍</span>
+          <span class="fi-name" style="color:var(--primary)">main.py</span>
+          <span class="fi-size">2.1K</span>
+        </div>
+        <div class="file-item" id="utils-folder" onclick="toggleFolder(this)" style="padding-left:8px">
+          <span class="fi-chevron" id="utils-chevron">›</span>
+          <span class="fi-icon">📁</span>
+          <span class="fi-name">utils/</span>
+        </div>
+        <div id="utils-children" style="display:none">
+          <div class="file-item" onclick="goTab('editor')" style="padding-left:32px">
+            <span class="fi-chevron"></span>
+            <span class="fi-icon">🐍</span>
+            <span class="fi-name">math_helpers.py</span>
+            <span class="fi-size">890B</span>
+          </div>
+          <div class="file-item" onclick="goTab('editor')" style="padding-left:32px">
+            <span class="fi-chevron"></span>
+            <span class="fi-icon">🐍</span>
+            <span class="fi-name">string_helpers.py</span>
+            <span class="fi-size">640B</span>
+          </div>
+        </div>
+        <div class="file-item" id="tests-folder" onclick="toggleFolder(this)" style="padding-left:8px">
+          <span class="fi-chevron" id="tests-chevron">›</span>
+          <span class="fi-icon">📁</span>
+          <span class="fi-name">tests/</span>
+        </div>
+        <div id="tests-children" style="display:none">
+          <div class="file-item" onclick="goTab('editor')" style="padding-left:32px">
+            <span class="fi-chevron"></span>
+            <span class="fi-icon">🐍</span>
+            <span class="fi-name">test_main.py</span>
+            <span class="fi-size">1.2K</span>
+          </div>
+        </div>
+        <div class="file-item" onclick="goTab('editor')" style="padding-left:8px">
+          <span class="fi-chevron"></span>
+          <span class="fi-icon">📄</span>
+          <span class="fi-name">README.md</span>
+          <span class="fi-size">380B</span>
+        </div>
+        <div class="file-item" onclick="goTab('editor')" style="padding-left:8px">
+          <span class="fi-chevron"></span>
+          <span class="fi-icon">🔧</span>
+          <span class="fi-name">requirements.txt</span>
+          <span class="fi-size">45B</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TERMINAL ── -->
+    <div class="tab-screen" id="screen-terminal">
+      <div class="app-bar">
+        <span class="ab-title">Terminal</span>
+        <div class="term-proc-chip">IDLE</div>
+        <span class="ab-icon" style="color:var(--error)" title="Stop">⬛</span>
+        <span class="ab-icon" title="Clear">🗑</span>
+      </div>
+      <div class="terminal-body">
+        <span class="tl tl-cmd">$ python3 main.py</span>
+        <span class="tl tl-err">Traceback (most recent call last):</span>
+        <span class="tl tl-err">  File "main.py", line 10, in divide</span>
+        <span class="tl tl-err">    return a //// b</span>
+        <span class="tl tl-err">           ^</span>
+        <span class="tl tl-err">SyntaxError: invalid syntax</span>
+        <span class="tl">&nbsp;</span>
+        <span class="tl tl-dim">Process exited with code 1 · 0.34s</span>
+        <span class="tl">&nbsp;</span>
+        <span class="tl tl-dim">─────────────────────────────────</span>
+        <span class="tl">&nbsp;</span>
+        <span class="tl tl-cmd">$ python3 main.py  <span class="tl-dim"># after fix</span></span>
+        <span class="tl tl-out">Calculator</span>
+        <span class="tl tl-out">2 + 3 = 5</span>
+        <span class="tl tl-out">10 - 4 = 6</span>
+        <span class="tl tl-out">3 × 7 = 21</span>
+        <span class="tl tl-out">15 ÷ 3 = 5.0</span>
+        <span class="tl">&nbsp;</span>
+        <span class="tl tl-ok">Process exited with code 0 · 1.24s ✓</span>
+      </div>
+      <div class="stdin-bar">
+        <span class="stdin-prompt">›</span>
+        <input class="stdin-input" placeholder="Send input to process…"/>
+        <span class="stdin-send">↑</span>
+      </div>
+    </div>
+
+    <!-- ── AGENT ── -->
+    <div class="tab-screen" id="screen-agent">
+      <div class="app-bar">
+        <span class="ab-title">AI Agent</span>
+        <div class="agent-provider-chip">
+          <span class="agent-chip-icon">🧠</span>
+          <span>Local · No model</span>
+        </div>
+        <span class="ab-icon" title="History">📋</span>
+      </div>
+      <!-- Placeholder status banner (shown when active) -->
+      <div class="agent-status-bar" id="agent-status-bar" style="display:none">
+        <span class="spinning" style="font-size:14px">⟳</span>
+        <span style="font-size:12px;color:var(--primary);font-weight:500">Executing tools...</span>
+      </div>
+      <div class="agent-messages">
+        <div class="msg user">
+          <div class="msg-avatar user-av">👤</div>
+          <div class="msg-bubble user">Create a simple calculator with add, subtract, multiply, divide.</div>
+        </div>
+        <div class="msg">
+          <div class="msg-avatar ai">🤖</div>
+          <div class="msg-bubble ai msg-pre">I'll create a calculator in main.py. Let me inspect the project first.
+
+✓ Inspected project structure
+✓ Created main.py with 4 operations
+✓ Ran main.py → exit code 0
+
+Task complete.</div>
+        </div>
+        <div class="msg user">
+          <div class="msg-avatar user-av">👤</div>
+          <div class="msg-bubble user">There is a syntax error on line 10. Fix it.</div>
+        </div>
+        <div class="msg">
+          <div class="msg-avatar ai">🤖</div>
+          <div class="msg-bubble ai msg-pre">Reading main.py now...
+
+⊗ Found SyntaxError on line 10: `////` should be `/`
+
+Applying fix with patch_file...
+✓ Fixed line 10
+✓ Reran → exit code 0
+
+Task complete.</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="agent-input-bar">
+        <textarea class="agent-input" placeholder="Ask the agent anything…" rows="1"></textarea>
+        <button class="agent-send" onclick="sendAgentMessage()">↑</button>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════
+         OVERLAY SCREENS (push on top of tabs)
+    ════════════════════════════════════════════════════════ -->
+
+    <!-- SETTINGS overlay -->
+    <div class="overlay-screen" id="overlay-settings">
+      <div class="overlay-app-bar">
+        <span class="back-btn" onclick="closeOverlay('settings')">‹</span>
+        <span class="overlay-title">Settings</span>
+      </div>
+      <div class="screen-content settings-list">
+        <div class="section-hdr">Editor</div>
+        <div class="settings-tile">
+          <div class="st-content"><div class="st-title">Font Size</div></div>
+          <div class="font-ctrl">
+            <div class="font-btn" onclick="changeFontSize(-1)">−</div>
+            <span class="font-val" id="font-size-val">14</span>
+            <div class="font-btn" onclick="changeFontSize(1)">+</div>
+          </div>
+        </div>
+        <div class="switch-tile">
+          <div class="sw-content"><div class="sw-title">Show Line Numbers</div></div>
+          <div class="sw-toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="switch-tile">
+          <div class="sw-content"><div class="sw-title">Auto-Save</div><div class="sw-sub">Save files when navigating away</div></div>
+          <div class="sw-toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="switch-tile">
+          <div class="sw-content"><div class="sw-title">Word Wrap</div></div>
+          <div class="sw-toggle" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="switch-tile">
+          <div class="sw-content"><div class="sw-title">Use Soft Tabs</div></div>
+          <div class="sw-toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+
+        <div class="section-hdr">Appearance</div>
+        <div class="settings-tile">
+          <div class="st-content"><div class="st-title">Theme</div></div>
+          <span class="st-value">Dark</span>
+          <span class="st-trailing">›</span>
+        </div>
+
+        <div class="section-hdr">AI</div>
+        <div class="settings-tile">
+          <div class="st-content"><div class="st-title">Network Mode</div><div class="st-sub">Controls which AI providers are available</div></div>
+          <span class="st-value">Auto</span>
+        </div>
+        <div class="settings-tile">
+          <div class="st-content"><div class="st-title">Active AI Provider</div><div class="st-sub">local</div></div>
+          <span class="st-trailing">›</span>
+        </div>
+        <div class="settings-tile">
+          <div class="st-content"><div class="st-title">Active Model</div><div class="st-sub">None selected</div></div>
+          <span class="st-trailing">›</span>
+        </div>
+        <div class="switch-tile">
+          <div class="sw-content"><div class="sw-title">Streaming Output</div></div>
+          <div class="sw-toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+
+        <div class="section-hdr">Agent</div>
+        <div class="settings-tile">
+          <div class="st-content"><div class="st-title">Max Iterations</div><div class="st-sub">20 iterations per session</div></div>
+          <span class="st-trailing">›</span>
+        </div>
+        <div class="settings-tile">
+          <div class="st-content"><div class="st-title">Confirmation Timeout</div><div class="st-sub">120s</div></div>
+          <span class="st-trailing">›</span>
+        </div>
+
+        <div class="section-hdr">About</div>
+        <div class="settings-tile">
+          <div class="st-content"><div class="st-title">Version</div><div class="st-sub">0.1.0 · Mylonite IDE · Phase 3</div></div>
+        </div>
+        <div class="settings-tile">
+          <div class="st-content"><div class="st-title">Architecture Docs</div><div class="st-sub">docs/ directory</div></div>
+          <span class="st-trailing" style="font-size:14px">↗</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RUNTIME MANAGER overlay -->
+    <div class="overlay-screen" id="overlay-runtime-manager">
+      <div class="overlay-app-bar">
+        <span class="back-btn" onclick="closeOverlay('runtime-manager')">‹</span>
+        <span class="overlay-title">Runtime Manager</span>
+      </div>
+      <div class="screen-content" style="padding:14px">
+        <div class="card runtime-card">
+          <div class="rc-header">
+            <span class="rc-icon">🐍</span>
+            <span class="rc-title">Python</span>
+            <span class="rc-status rc-not-installed">Not installed</span>
+          </div>
+          <div class="info-rows">
+            <div class="info-row"><span class="ir-label">Version</span><span class="ir-val">3.12.4</span></div>
+            <div class="info-row"><span class="ir-label">Architecture</span><span class="ir-val">arm64-v8a</span></div>
+            <div class="info-row"><span class="ir-label">Storage</span><span class="ir-val">~75 MB</span></div>
+          </div>
+          <div class="rc-actions">
+            <button class="btn btn-p" style="font-size:12px;padding:7px 14px">⬇ Install</button>
+          </div>
+        </div>
+        <div class="card runtime-card">
+          <div class="rc-header">
+            <span class="rc-icon">🟨</span>
+            <span class="rc-title">JavaScript</span>
+            <span class="rc-status rc-not-installed">Not installed</span>
+          </div>
+          <div class="info-rows">
+            <div class="info-row"><span class="ir-label">Version</span><span class="ir-val">QuickJS 2024.01</span></div>
+            <div class="info-row"><span class="ir-label">Architecture</span><span class="ir-val">arm64-v8a</span></div>
+            <div class="info-row"><span class="ir-label">Storage</span><span class="ir-val">~3 MB</span></div>
+          </div>
+          <div class="rc-actions">
+            <button class="btn btn-p" style="font-size:12px;padding:7px 14px">⬇ Install</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODEL MANAGER overlay -->
+    <div class="overlay-screen" id="overlay-model-manager">
+      <div class="overlay-app-bar">
+        <span class="back-btn" onclick="closeOverlay('model-manager')">‹</span>
+        <span class="overlay-title">Model Manager</span>
+        <span class="ab-icon" style="margin-left:auto;margin-right:4px" title="Import">📂</span>
+      </div>
+      <div class="screen-content" style="padding:14px">
+        <!-- Storage summary -->
+        <div class="card storage-card">
+          <div class="sc-inner">
+            <span class="sc-icon">💾</span>
+            <div>
+              <div class="sc-title">Model Storage</div>
+              <div class="sc-sub">0 models installed · 0 MB used</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="recommended-label">Recommended Models</div>
+
+        <!-- Qwen2.5-Coder 1.5B -->
+        <div class="card model-card">
+          <div class="mc-header">
+            <div class="mc-info">
+              <div class="mc-name">Qwen2.5-Coder 1.5B</div>
+              <div class="mc-sub">Qwen2.5 · Q4_K_M</div>
+            </div>
+            <span class="mc-profile profile-tiny">Tiny (~1B)</span>
+          </div>
+          <div class="stats-row">
+            <div class="stat-chip"><span class="stat-icon">💾</span>940 MB</div>
+            <div class="stat-chip"><span class="stat-icon">🧠</span>~1100 MB RAM</div>
+            <div class="stat-chip"><span class="stat-icon">📝</span>4K ctx</div>
+          </div>
+          <div class="mc-actions">
+            <button class="btn btn-p" style="font-size:12px;padding:7px 14px">⬇ Download · 940 MB</button>
+          </div>
+        </div>
+
+        <!-- Qwen2.5-Coder 3B -->
+        <div class="card model-card">
+          <div class="mc-header">
+            <div class="mc-info">
+              <div class="mc-name">Qwen2.5-Coder 3B</div>
+              <div class="mc-sub">Qwen2.5 · Q4_K_M</div>
+            </div>
+            <span class="mc-profile profile-balanced">Balanced (~3B)</span>
+          </div>
+          <div class="stats-row">
+            <div class="stat-chip"><span class="stat-icon">💾</span>1.9 GB</div>
+            <div class="stat-chip"><span class="stat-icon">🧠</span>~2.2 GB RAM</div>
+            <div class="stat-chip"><span class="stat-icon">📝</span>8K ctx</div>
+          </div>
+          <div class="mc-actions">
+            <button class="btn btn-p" style="font-size:12px;padding:7px 14px">⬇ Download · 1.9 GB</button>
+          </div>
+        </div>
+
+        <!-- Phi-3 Mini -->
+        <div class="card model-card">
+          <div class="mc-header">
+            <div class="mc-info">
+              <div class="mc-name">Phi-3 Mini 4K</div>
+              <div class="mc-sub">Phi-3 · Q4_K_M</div>
+            </div>
+            <span class="mc-profile profile-balanced">Balanced (~3B)</span>
+          </div>
+          <div class="stats-row">
+            <div class="stat-chip"><span class="stat-icon">💾</span>2.2 GB</div>
+            <div class="stat-chip"><span class="stat-icon">🧠</span>~2.6 GB RAM</div>
+            <div class="stat-chip"><span class="stat-icon">📝</span>4K ctx</div>
+          </div>
+          <div class="mc-actions">
+            <button class="btn btn-p" style="font-size:12px;padding:7px 14px">⬇ Download · 2.2 GB</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROJECTS overlay (used when navigating to it) -->
+    <div class="overlay-screen" id="overlay-projects">
+      <div class="overlay-app-bar">
+        <span class="back-btn" onclick="closeOverlay('projects')">‹</span>
+        <span class="overlay-title">Projects</span>
+        <span class="ab-icon" style="margin-left:auto" title="Import ZIP">⬇</span>
+        <span class="ab-icon" title="New Project">＋</span>
+      </div>
+      <div class="screen-content">
+        <div class="proj-item" onclick="closeOverlay('projects');goTab('explorer')">
+          <div class="proj-avatar" style="background:rgba(53,114,165,.2);color:#3572A5">Py</div>
+          <div class="proj-info">
+            <div class="proj-name">my-calculator</div>
+            <div class="proj-meta">Python · Opened 2m ago</div>
+          </div>
+          <div class="chip green" style="font-size:10px;margin-right:4px">open</div>
+          <div class="proj-menu">⋯</div>
+        </div>
+        <div class="proj-divider"></div>
+        <div class="proj-item" onclick="closeOverlay('projects');goTab('explorer')">
+          <div class="proj-avatar" style="background:rgba(241,224,90,.15);color:#c8b827">JS</div>
+          <div class="proj-info">
+            <div class="proj-name">web-scraper</div>
+            <div class="proj-meta">JavaScript · Opened 1h ago</div>
+          </div>
+          <div class="proj-menu">⋯</div>
+        </div>
+        <div class="proj-divider"></div>
+      </div>
+      <div class="fab" onclick="closeOverlay('projects')">＋ New Project</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════
+         BOTTOM NAVIGATION
+    ════════════════════════════════════════════════════════ -->
+    <div class="bottom-nav" id="bottom-nav">
+      <div class="nav-item active" id="nav-home" onclick="goTab('home')">
+        <span class="ni">🏠</span>
+        <span class="nl">Home</span>
+      </div>
+      <div class="nav-item" id="nav-editor" onclick="goTab('editor')">
+        <span class="ni">&lt;/&gt;</span>
+        <span class="nl">Editor</span>
+      </div>
+      <div class="nav-item" id="nav-explorer" onclick="goTab('explorer')">
+        <span class="ni">📁</span>
+        <span class="nl">Files</span>
+      </div>
+      <div class="nav-item" id="nav-terminal" onclick="goTab('terminal')">
+        <span class="ni">⬛</span>
+        <span class="nl">Terminal</span>
+      </div>
+      <div class="nav-item" id="nav-agent" onclick="goTab('agent')">
+        <span class="ni">🤖</span>
+        <span class="nl">Agent</span>
+      </div>
+    </div>
+
+  </div><!-- /phone-inner -->
+</div><!-- /phone-outer -->
+
+<script>
+/* ── Navigation ── */
+const tabs = ['home','editor','explorer','terminal','agent'];
+
+function goTab(tab) {
+  // If projects tab requested, open as overlay
+  if (tab === 'projects') { openOverlay('projects'); return; }
+
+  // Close any open overlay first
+  document.querySelectorAll('.overlay-screen').forEach(o => o.classList.remove('visible'));
+
+  tabs.forEach(t => {
+    document.getElementById('screen-' + t)?.classList.remove('active');
+    document.getElementById('nav-' + t)?.classList.remove('active');
+  });
+  const screen = document.getElementById('screen-' + tab);
+  const nav    = document.getElementById('nav-' + tab);
+  if (screen) screen.classList.add('active');
+  if (nav)    nav.classList.add('active');
+}
+
+/* ── Overlay navigation ── */
+function openOverlay(name) {
+  document.getElementById('overlay-' + name)?.classList.add('visible');
+}
+function closeOverlay(name) {
+  document.getElementById('overlay-' + name)?.classList.remove('visible');
+}
+
+/* ── Search bar toggle ── */
+function toggleSearch() {
+  const bar = document.getElementById('search-bar');
+  const visible = bar.style.display !== 'none';
+  bar.style.display = visible ? 'none' : 'flex';
+  if (!visible) bar.querySelector('input').focus();
+}
+
+function updateSearchCount(val) {
+  const el = document.getElementById('search-count');
+  if (!val) { el.textContent = 'No results'; return; }
+  // Simulate matches in the demo code
+  const code = `add subtract multiply divide ValueError return print`;
+  const matches = (code.match(new RegExp(val,'gi')) || []).length;
+  el.textContent = matches ? `1 / ${matches}` : 'No results';
+}
+
+/* ── Explorer folder toggle ── */
+function toggleFolder(el) {
+  const id = el.id; // utils-folder or tests-folder
+  const name = id.replace('-folder','');
+  const children = document.getElementById(name + '-children');
+  const chevron  = document.getElementById(name + '-chevron');
+  const open = children.style.display !== 'none';
+  children.style.display = open ? 'none' : 'block';
+  if (chevron) {
+    chevron.textContent = open ? '›' : '⌄';
+    chevron.style.color = open ? 'rgba(212,212,212,.35)' : 'var(--secondary)';
+  }
+  el.querySelector('.fi-icon').textContent = open ? '📁' : '📂';
+}
+
+/* ── Font size control ── */
+let fontSize = 14;
+function changeFontSize(delta) {
+  fontSize = Math.max(10, Math.min(24, fontSize + delta));
+  document.getElementById('font-size-val').textContent = fontSize;
+}
+
+/* ── Agent send ── */
+function sendAgentMessage() {
+  const bar = document.querySelector('.agent-input');
+  const text = bar.value.trim();
+  if (!text) return;
+  bar.value = '';
+
+  const msgs = document.querySelector('.agent-messages');
+  // Add user message
+  const um = document.createElement('div');
+  um.className = 'msg user';
+  um.innerHTML = `<div class="msg-avatar user-av">👤</div><div class="msg-bubble user">${text}</div>`;
+  msgs.appendChild(um);
+
+  // Show status banner briefly
+  const sb = document.getElementById('agent-status-bar');
+  sb.style.display = 'flex';
+
+  setTimeout(() => {
+    sb.style.display = 'none';
+    const am = document.createElement('div');
+    am.className = 'msg';
+    am.innerHTML = `<div class="msg-avatar ai">🤖</div><div class="msg-bubble ai">I'll work on that now. Let me inspect the project...<br><br>✓ Task complete.</div>`;
+    msgs.appendChild(am);
+    msgs.scrollTop = msgs.scrollHeight;
+  }, 2000);
+
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+/* ── Boot: home tab active ── */
+goTab('home');
+</script>
+</body>
+</html>

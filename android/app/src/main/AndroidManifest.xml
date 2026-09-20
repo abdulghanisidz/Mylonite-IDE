@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ================================================================
+         PERMISSIONS
+         Architecture: 06-SECURITY.md §20 — Only non-dangerous permissions requested.
+         No CAMERA, RECORD_AUDIO, READ_CONTACTS, READ_SMS, or location permissions.
+         ================================================================ -->
+
+    <!-- Network access: optional — for model/runtime downloads and cloud AI providers.
+         Core offline functionality does not require this. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Foreground service: required for long-running code execution and AI inference.
+         Architecture: 02-ARCHITECTURE.md §4.2, NFR-008 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- Foreground service type: DATA_SYNC covers process execution and model inference.
+         Required on Android 14+ (API 34) for typed foreground services. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <!-- Post notifications: required on Android 13+ (API 33) for foreground service notifications. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Wake lock: keeps CPU active during AI inference and code execution.
+         Architecture: 05-OFFLINE-AI.md §18 -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- ================================================================
+         HARDWARE FEATURE DECLARATIONS (not required — optional)
+         Marks that touchscreen is required (standard for phones).
+         ================================================================ -->
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="true" />
+
+    <!-- ================================================================
+         APPLICATION
+         ================================================================ -->
+    <application
+        android:label="Mylonite IDE"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:hardwareAccelerated="true"
+        android:largeHeap="true">
+        <!--
+            largeHeap="true": Requests the large heap size class from Android.
+            Needed when loading AI models (up to ~2.5 GB for 3B Q4 model).
+            Architecture: 05-OFFLINE-AI.md §8.2, 02-ARCHITECTURE.md §14.1
+        -->
+
+        <!-- ============================================================
+             MAIN ACTIVITY
+             ============================================================ -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- ============================================================
+             FOREGROUND SERVICE: Process Execution
+             Hosts long-running code execution sessions.
+             Architecture: 04-RUNTIME-SYSTEM.md §5.4, ForegroundServiceHost
+             ============================================================ -->
+        <service
+            android:name=".services.ProcessForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- ============================================================
+             FOREGROUND SERVICE: AI Inference
+             Hosts long-running local model inference sessions.
+             Architecture: 05-OFFLINE-AI.md §13, LocalAIProvider
+             ============================================================ -->
+        <service
+            android:name=".services.InferenceForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Flutter tool metadata — do not remove -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+
+    <!-- Required for Flutter text processing plugin -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
+        </intent>
+    </queries>
+
+</manifest>

@@ -1,0 +1,469 @@
+================================================================================
+  OFFLINE MOBILE IDE — PROJECT SUMMARY
+  Generated: 2026-08-30
+  Phase: Phase 0 (Architecture Docs) + Phase 1 (Flutter Application Shell)
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 1 — PROJECT IDENTITY
+────────────────────────────────────────────────────────────────────────────────
+
+  Name:           Offline Mobile IDE (AIOIDE)
+  Package:        com.offlinemobileide.aioide
+  Flutter:        3.47.1
+  Dart:           3.13.1
+  Min SDK:        26 (Android 8.0)
+  Target SDK:     Flutter default (latest stable)
+  ABI:            arm64-v8a (primary), armeabi-v7a, x86_64 (emulator)
+  APK type:       Split APKs per ABI
+  Root dir:       c:\Abdul Ghani\All projects folder\iQOO\AIOIDE\
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 2 — DOCUMENTATION (Phase 0 — COMPLETE)
+────────────────────────────────────────────────────────────────────────────────
+
+  All 9 architecture documents created and consistency-checked.
+  Located in: docs/
+
+  docs/00-PROJECT-VISION.md
+      Product vision, target users, MVP definition (calculator demo loop),
+      long-term direction, constraints, success criteria.
+
+  docs/01-REQUIREMENTS.md
+      90 functional requirements (FR-001–FR-090)
+      18 non-functional requirements (NFR-001–NFR-018)
+      19 security requirements (SEC-001–SEC-019)
+      22 performance requirements (PERF-001–PERF-022)
+      14 platform constraints (CON-001–CON-014)
+      16 MVP requirements (MVP-001–MVP-016)
+      17 future requirements (FUT-001–FUT-017)
+      10 out-of-scope items (OOS-001–OOS-010)
+      Device tiers: Tier A (3-4GB), Tier B (6-8GB, V1 minimum), Tier C (10-16GB)
+
+  docs/02-ARCHITECTURE.md
+      5-layer stack: UI / Core / Platform Bridge / Native / Engines
+      Full component map (15+ named components)
+      7 ADRs: Flutter, llama.cpp, QuickJS, Dart FFI, no-DB-v1, stateless-inference,
+              no-fine-tuned-model-required
+      Platform Channel definitions (4 channels)
+      Data flow diagrams (Mermaid)
+      10 open questions (OQ-001–OQ-010)
+
+  docs/03-AI-AGENT.md
+      14 tool definitions with full schemas and permission levels
+      Agent state machine (12 states)
+      ContextManager token budgeting strategy
+      Full iteration loop pseudocode
+      Example session: complete MVP calculator loop
+      Small-model mitigations
+      21 agent test cases
+
+  docs/04-RUNTIME-SYSTEM.md
+      RuntimeInterface definition
+      CPython ARM64 deployment strategy (libpython3.so / nativeLibraryDir)
+      QuickJS V1 JavaScript engine
+      ProcessManager Kotlin architecture
+      noexec problem analysis and solution
+      Diagnostics parsing (Python tracebacks, QuickJS errors)
+      8 open questions (RQ-001–RQ-008)
+
+  docs/05-OFFLINE-AI.md
+      Inference engine evaluation: llama.cpp vs MNN vs NCNN vs ExecuTorch vs MediaPipe
+      Decision: llama.cpp (NEON ARM64, GGUF, MIT license, proven Android deployments)
+      Model profiles: Tiny (~1B), Balanced (~3B), Power (~7B)
+      Quantization: Q4_K_M recommended
+      RAM budget analysis per device tier
+      Dart FFI binding design
+      Thermal management strategy (PowerManager.ThermalStatus API 29+)
+      8 open questions (AI-OQ-001–AI-OQ-008)
+
+  docs/06-SECURITY.md
+      13 threat categories (T-01 through T-13)
+      4-layer trust model (High / Medium / Untrusted / Denied)
+      Workspace sandbox: 3-layer path confinement
+      Prompt injection defences: content isolation tags + system prompt +
+          confirmation gate + path validation + tool allowlist
+      ZIP slip protection requirements
+      API key storage: EncryptedSharedPreferences + Android Keystore
+      Audit trail: last 50 sessions per project
+      20 security tests (ST-001–ST-020)
+      Honest limitations documented
+
+  docs/07-DATA-MODELS.md
+      19 data models defined: Project, Workspace, File, Runtime, RuntimeVersion,
+      AIProvider, AIModel, AgentSession, AgentMessage, ToolCall, ToolResult,
+      Conversation, Execution, Diagnostic, Settings, AuditEvent (and more)
+      Complete storage layout: all paths relative to getFilesDir()
+      No database for V1 — JSON files
+
+  docs/08-ROADMAP.md
+      16 phases (Phase 0–15)
+      Phase dependency graph
+      Each phase: objective, dependencies, deliverables, acceptance criteria,
+          risks, exit conditions
+      MVP gate: 11-step validation test in airplane mode
+      Post-V1 backlog: 18 deferred items
+      Risk register: 10 high-priority risks (R-001–R-010)
+
+  CONSISTENCY FIXES APPLIED DURING REVIEW:
+      - FR-051: corrected from "virtual environment" to "pip --target .packages/"
+      - SEC-005: replaced placeholder "N files" with concrete numbers (5/20)
+      - FUT-001: was "JavaScript execution" (already V1 via FR-044) → corrected to
+                 "Node.js ARM64 runtime for npm ecosystem"
+      - FUT-003: phase reference corrected from "Phase 6" to "Post-V1"
+      - FUT-004: phase reference corrected from "Phase 5" to "Post-V1"
+      - FUT-006: phase reference corrected from "Phase 8" to "Post-V1"
+      - Roadmap Phase 13: "22 security tests" → "20 security tests (ST-001–ST-020)"
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 3 — FLUTTER PROJECT STRUCTURE (Phase 1 — COMPLETE)
+────────────────────────────────────────────────────────────────────────────────
+
+  lib/
+  ├── main.dart
+  │       Entry point. Startup sequence: lock orientation → load settings →
+  │       configure logging → runApp(ProviderScope(AIOIDEApp)).
+  │       AIOIDEApp reads SettingsModel for ThemeMode, delegates to AppRouter.
+  │
+  ├── core/
+  │   ├── constants/
+  │   │   ├── app_constants.dart      All magic numbers and string constants.
+  │   │   │                           Agent limits, storage dirs, file names,
+  │   │   │                           security thresholds.
+  │   │   └── route_names.dart        Named route constants for go_router.
+  │   │
+  │   ├── models/
+  │   │   ├── enums.dart              All shared enums: Language, RuntimeStatus,
+  │   │   │                           AgentSessionStatus, MessageRole, ToolResultStatus,
+  │   │   │                           ToolPermission, AIProviderType, NetworkMode,
+  │   │   │                           ModelQuantization, ModelProfile, LogLevel,
+  │   │   │                           LogSubsystem, DiagnosticSeverity, AuditEventType...
+  │   │   ├── app_error.dart          AppError type + Result<T> sealed class (Ok/Err).
+  │   │   │                           Named constructors: fileNotFound, pathTraversal,
+  │   │   │                           modelNotLoaded, insufficientMemory, etc.
+  │   │   └── settings_model.dart     SettingsModel with 30+ fields. toJson/fromJson.
+  │   │                               AppThemeMode enum. Full copyWith.
+  │   │
+  │   └── services/
+  │       ├── logging_service.dart    Singleton LoggingService. Ring buffer (500 entries).
+  │       │                           Subsystem tags. Level filtering. Global `log` shorthand.
+  │       ├── settings_service.dart   Singleton SettingsService. Atomic write-to-temp-rename.
+  │       │                           Loads from settings/settings.json. Configures logger.
+  │       └── app_router.dart         GoRouter config. StatefulShellRoute with 5 tabs.
+  │                                   3 overlay routes (Settings, RuntimeManager, ModelManager).
+  │
+  ├── platform/
+  │   └── channels/
+  │       ├── process_channel.dart    Dart stub for ide/process MethodChannel +
+  │       │                           ide/process/output EventChannel.
+  │       │                           spawnProcess, terminateProcess, writeStdin, outputStream.
+  │       ├── system_channel.dart     Dart stub for ide/system. MemoryInfo, ThermalStatus enum,
+  │       │                           getMemoryInfo, getThermalStatus, isPowerSaveMode.
+  │       ├── secrets_channel.dart    Dart stub for ide/secrets. storeKey, hasKey, deleteKey,
+  │       │                           getKeyMasked. SecretKeys constants. Key NEVER to Dart.
+  │       └── storage_channel.dart    Dart stub for ide/storage. SAF file/directory picker,
+  │                                   readFromUri, writeToUri, takePersistablePermission.
+  │
+  ├── features/
+  │   ├── home/
+  │   │   └── home_screen.dart        Landing screen. Quick actions: Open/New Project,
+  │   │                               Model Manager. Status bar (model/version).
+  │   ├── projects/
+  │   │   └── projects_screen.dart    Project list. Empty state. New Project bottom sheet
+  │   │                               with name input + language chip selector (Python/JS).
+  │   ├── editor/
+  │   │   └── editor_screen.dart      Code editor shell. File tab bar. Line number gutter.
+  │   │                               Placeholder code rendering. Diagnostic status bar.
+  │   │                               Run button stub. Diff preview stubs.
+  │   ├── explorer/
+  │   │   └── explorer_screen.dart    File tree explorer. Project header. Placeholder tree
+  │   │                               with depth-indented file/dir items. Icon by extension.
+  │   ├── terminal/
+  │   │   └── terminal_screen.dart    Terminal UI. Placeholder output (stdout/stderr mock).
+  │   │                               Process status chip. stdin input bar. Stop/Clear buttons.
+  │   ├── agent/
+  │   │   └── agent_screen.dart       AI Agent chat UI. Provider indicator chip. Message
+  │   │                               bubbles (user/assistant). Agent status banner (animated).
+  │   │                               Input bar with submit. Session history stub.
+  │   ├── settings/
+  │   │   └── settings_screen.dart    Live settings screen (reads/writes SettingsService).
+  │   │                               Sections: Editor, Appearance, AI, Agent, Runtime, Privacy.
+  │   │                               Font size +/- controls. Working switches. Dropdowns.
+  │   ├── runtime_manager/
+  │   │   └── runtime_manager_screen.dart  Runtime cards (Python + QuickJS). Status badges.
+  │   │                                    Storage/version info. Install/Remove/Health-Check stubs.
+  │   └── model_manager/
+  │       └── model_manager_screen.dart    Model cards (3 placeholder models: 1B, 3B, 3B-Phi3).
+  │                                        Storage summary. Download/Activate/Delete stubs.
+  │                                        Profile badges (Tiny/Balanced/Power). RAM/size chips.
+  │
+  └── ui/
+      └── theme/
+          └── app_theme.dart          AppColors palette. AppTheme.dark() + AppTheme.light().
+                                      JetBrains Mono via google_fonts. Material3.
+                                      Full NavigationBar, AppBar, Input, Button, Chip themes.
+
+  android/app/src/main/kotlin/com/offlinemobileide/aioide/
+  ├── MainActivity.kt                 Registers all 4 Platform Channels on FlutterEngine config.
+  ├── channels/
+  │   ├── ProcessChannel.kt           ide/process + ide/process/output stubs (Phase 4).
+  │   ├── StorageChannel.kt           ide/storage SAF stubs (Phase 2).
+  │   ├── SystemChannel.kt            IMPLEMENTED: getMemoryInfo (ActivityManager.MemoryInfo),
+  │   │                               getThermalStatus (PowerManager.ThermalStatus, API 29+),
+  │   │                               isPowerSaveMode (PowerManager).
+  │   └── SecretsChannel.kt           IMPLEMENTED: storeKey, hasKey, deleteKey, getKeyMasked
+  │                                   using EncryptedSharedPreferences + AES256-GCM MasterKey.
+  └── services/
+      ├── ProcessForegroundService.kt Foreground service for code execution. Notification with
+      │                               Stop action. CHANNEL_ID=ide_process_channel. (Phase 4).
+      └── InferenceForegroundService.kt Foreground service for AI inference. Notification with
+                                      Cancel action. Dynamic model name in notification. (Phase 9).
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 4 — KEY DEPENDENCIES
+────────────────────────────────────────────────────────────────────────────────
+
+  go_router: 15.1.2
+      Declarative routing. StatefulShellRoute for persistent bottom-nav tabs.
+      5 branches (Home, Editor, Explorer, Terminal, Agent) + 3 overlay routes.
+
+  flutter_riverpod: 2.6.1
+      Reactive state management. ProviderScope at app root.
+      Providers to be added per-feature in Phase 2+.
+
+  riverpod_annotation: 2.6.1 + riverpod_generator: 2.6.5
+      Code generation for @riverpod annotated providers (future use).
+
+  shared_preferences: 2.3.5
+      Key-value store for lightweight settings persistence fallback.
+
+  path_provider: 2.1.5
+      getApplicationSupportDirectory() → app-internal storage root.
+      Used by SettingsService and (future) WorkspaceManager.
+
+  path: 1.9.1
+      Pure-Dart path utilities. Used by WorkspaceManager for safe path joining.
+
+  json_annotation: 4.9.0 + json_serializable: 6.9.4
+      JSON serialization for all data models (future code-gen).
+
+  google_fonts: 6.2.1
+      JetBrains Mono for editor/terminal. Inter for UI labels.
+
+  equatable: 2.0.7
+      Value equality for data model classes.
+
+  uuid: 4.5.1
+      UUID v4 generation for Project.id, AgentSession.id, etc.
+
+  intl: 0.20.2
+      Date/time formatting for session timestamps in UI.
+
+  flutter_svg: 2.0.15
+      SVG file-type icons in the explorer (future use).
+
+  Android (Kotlin):
+  androidx.security:security-crypto:1.1.0-alpha06
+      EncryptedSharedPreferences for API key storage.
+      Backed by Android Keystore (AES256-GCM).
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 5 — ANDROID CONFIGURATION
+────────────────────────────────────────────────────────────────────────────────
+
+  android/app/build.gradle.kts:
+      minSdk = 26                           Android 8.0+ (CON-002)
+      ABI: arm64-v8a, armeabi-v7a, x86_64   Split APKs per ABI (CON-007)
+      largeHeap = true                      Enables large heap for AI models
+      buildConfig = true                    ENABLE_VERBOSE_LOGGING, PERSIST_LOGS_TO_FILE
+      Debug: verbose logging on, log file on
+      Release: verbose logging off, log file off
+
+  android/app/src/main/AndroidManifest.xml:
+      INTERNET                              Optional: model/runtime downloads, cloud AI
+      FOREGROUND_SERVICE                    Required: long-running execution + inference
+      FOREGROUND_SERVICE_DATA_SYNC          Android 14+ foreground service type
+      POST_NOTIFICATIONS                    Android 13+ for service notifications
+      WAKE_LOCK                             CPU active during inference
+      android:largeHeap="true"             Large heap for model loading
+      android:allowBackup="false"          No cloud backup of project data
+      ProcessForegroundService              foregroundServiceType="dataSync"
+      InferenceForegroundService            foregroundServiceType="dataSync"
+      NO dangerous permissions:             No camera, mic, contacts, location, SMS
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 6 — NAVIGATION STRUCTURE
+────────────────────────────────────────────────────────────────────────────────
+
+  Bottom Navigation (5 tabs — StatefulShellRoute, persistent state):
+      /            → HomeScreen         (Home icon)
+      /editor      → EditorScreen       (Code icon)
+      /explorer    → ExplorerScreen     (Folder icon)
+      /terminal    → TerminalScreen     (Terminal icon)
+      /agent       → AgentScreen        (Smart toy icon)
+
+  Sub-routes of Home:
+      /projects    → ProjectsScreen     (pushed within Home branch)
+
+  Full-screen overlay routes (push on top of shell):
+      /settings         → SettingsScreen
+      /runtime-manager  → RuntimeManagerScreen
+      /model-manager    → ModelManagerScreen
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 7 — BUILD VERIFICATION
+────────────────────────────────────────────────────────────────────────────────
+
+  flutter pub get:    ✓ PASS — 97 packages resolved
+  flutter analyze:    ✓ PASS — 0 errors, 0 warnings
+                      41 info hints (withOpacity deprecation in Flutter 3.47,
+                      GGUF quantization enum naming — intentional technical names,
+                      not style violations that affect functionality)
+
+  Note: flutter build apk not run (requires Android SDK / connected device).
+  The project is ready for flutter run on a connected Android device.
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 8 — IMPLEMENTED vs STUBBED
+────────────────────────────────────────────────────────────────────────────────
+
+  IMPLEMENTED (Phase 1 functional):
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ LoggingService         Ring buffer, level filtering, subsystem tags     │
+  │ SettingsService        JSON load/save with atomic write, logger config  │
+  │ AppTheme               Dark + light Material3, JetBrains Mono           │
+  │ AppRouter              go_router, 5 tabs + 3 overlays, persistent state │
+  │ AppError / Result<T>   Typed error propagation throughout the app       │
+  │ All enums              Language, RuntimeStatus, AgentSessionStatus, etc │
+  │ SettingsScreen         Live read/write via SettingsService               │
+  │ SystemChannel.kt       getMemoryInfo, getThermalStatus, isPowerSaveMode  │
+  │ SecretsChannel.kt      EncryptedSharedPreferences + Keystore, masked key│
+  │ ProcessForegroundService.kt  Notification + Stop action                 │
+  │ InferenceForegroundService.kt Notification + Cancel action              │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  STUBBED (Phase 2+ to implement):
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ ProcessChannel.kt      spawnProcess, terminateProcess, writeStdin       │
+  │ StorageChannel.kt      SAF file/directory pickers                       │
+  │ WorkspaceManager       File CRUD, path confinement (Phase 2)           │
+  │ ProjectManager         Project lifecycle (Phase 2)                      │
+  │ EditorController       Buffer, undo/redo, diff preview (Phase 3)        │
+  │ RuntimeManager         Runtime registry, routing (Phase 4)             │
+  │ PythonRuntime          CPython ARM64 execution (Phase 5)                │
+  │ JavaScriptRuntime      QuickJS execution (Phase 6)                      │
+  │ DiagnosticsService     Error parsing (Phase 7/12)                       │
+  │ AIProviderManager      Provider selection, network mode (Phase 8)       │
+  │ LocalAIProvider        llama.cpp Dart FFI (Phase 9)                     │
+  │ ModelManager           GGUF management, RAM check (Phase 9)             │
+  │ ToolRegistry           14 agent tools (Phase 10)                        │
+  │ AgentLoop              Full autonomous loop (Phase 11)                  │
+  │ SearchEngine           Text/file/regex search (Phase 10)                │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 9 — PHASE ROADMAP REFERENCE
+────────────────────────────────────────────────────────────────────────────────
+
+  Phase 0  Architecture & Docs         ✓ COMPLETE
+  Phase 1  Flutter App Shell           ✓ COMPLETE
+  Phase 2  Workspace & Filesystem      → NEXT: WorkspaceManager, ProjectManager,
+                                                ZIP import/export, SAF
+  Phase 3  Code Editor                 → EditorController, editor widget selection
+  Phase 4  Execution Engine            → ProcessService Kotlin, noexec investigation
+  Phase 5  Python Runtime              → CPython ARM64, pip --target
+  Phase 6  JavaScript Runtime          → QuickJS ARM64
+  Phase 7  Terminal & Process Manager  → Full interactive terminal
+  Phase 8  AI Provider Abstraction     → AIProviderManager, mock provider
+  Phase 9  Local AI Inference          → llama.cpp Dart FFI, ModelManager
+  Phase 10 AI Tool System              → 14 tools, ToolRegistry, OutputParser
+  Phase 11 Agent Loop                  → AgentController, AgentLoop, ContextManager
+  Phase 12 AI Debugging                → DiagnosticsService, inline markers
+  Phase 13 Security Hardening          → All 20 ST tests, audit, log review
+  Phase 14 Performance Optimization    → Profile PERF-001 to PERF-022
+  Phase 15 Beta Testing                → Real devices, Tier A/B/C
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 10 — IMPORTANT ARCHITECTURE DECISIONS (QUICK REFERENCE)
+────────────────────────────────────────────────────────────────────────────────
+
+  ADR-001  Flutter for UI              Cross-platform; single codebase; good perf
+  ADR-002  llama.cpp for inference     Most mature ARM64 LLM engine; GGUF; MIT
+  ADR-003  QuickJS for V1 JavaScript   ~200KB; ES2020; no JIT restrictions; no npm
+  ADR-004  Dart FFI for llama.cpp      Avoids JNI double bridge; token-gen perf
+  ADR-005  No database in V1           JSON files sufficient; no migration overhead
+  ADR-006  Stateless inference         Simpler; no KV cache management; post-V1 opt
+  ADR-007  No required fine-tuning     Any instruction-following GGUF model works
+
+  KEY CONSTRAINTS:
+  - noexec: Python binary must be in nativeLibraryDir (as libpython3.so)
+  - No root: all operations within app sandbox
+  - No system shell: all terminal interactions via RuntimeManager, not /bin/sh
+  - API keys never in Dart: EncryptedSharedPreferences in Kotlin only
+  - Path confinement: 2-layer (ToolExecutor + WorkspaceManager)
+  - AI context budget: 75% of model context window, 1024 token output reserve
+
+  OFFLINE-FIRST INVARIANT:
+  - All core features work with no internet connection
+  - Internet only needed for: initial runtime/model download, cloud AI (optional),
+    pip package install, npm (future)
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 11 — FILE MANIFEST (ALL PROJECT FILES)
+────────────────────────────────────────────────────────────────────────────────
+
+  DOCUMENTATION (docs/)
+  ├── docs/00-PROJECT-VISION.md
+  ├── docs/01-REQUIREMENTS.md
+  ├── docs/02-ARCHITECTURE.md
+  ├── docs/03-AI-AGENT.md
+  ├── docs/04-RUNTIME-SYSTEM.md
+  ├── docs/05-OFFLINE-AI.md
+  ├── docs/06-SECURITY.md
+  ├── docs/07-DATA-MODELS.md
+  └── docs/08-ROADMAP.md
+
+  FLUTTER / DART (lib/)
+  ├── lib/main.dart
+  ├── lib/core/constants/app_constants.dart
+  ├── lib/core/constants/route_names.dart
+  ├── lib/core/models/enums.dart
+  ├── lib/core/models/app_error.dart
+  ├── lib/core/models/settings_model.dart
+  ├── lib/core/services/logging_service.dart
+  ├── lib/core/services/settings_service.dart
+  ├── lib/core/services/app_router.dart
+  ├── lib/platform/channels/process_channel.dart
+  ├── lib/platform/channels/system_channel.dart
+  ├── lib/platform/channels/secrets_channel.dart
+  ├── lib/platform/channels/storage_channel.dart
+  ├── lib/features/home/home_screen.dart
+  ├── lib/features/projects/projects_screen.dart
+  ├── lib/features/editor/editor_screen.dart
+  ├── lib/features/explorer/explorer_screen.dart
+  ├── lib/features/terminal/terminal_screen.dart
+  ├── lib/features/agent/agent_screen.dart
+  ├── lib/features/settings/settings_screen.dart
+  ├── lib/features/runtime_manager/runtime_manager_screen.dart
+  ├── lib/features/model_manager/model_manager_screen.dart
+  └── lib/ui/theme/app_theme.dart
+
+  ANDROID / KOTLIN (android/)
+  ├── android/app/build.gradle.kts
+  ├── android/app/src/main/AndroidManifest.xml
+  ├── android/app/src/main/kotlin/.../MainActivity.kt
+  ├── android/app/src/main/kotlin/.../channels/ProcessChannel.kt
+  ├── android/app/src/main/kotlin/.../channels/StorageChannel.kt
+  ├── android/app/src/main/kotlin/.../channels/SystemChannel.kt
+  ├── android/app/src/main/kotlin/.../channels/SecretsChannel.kt
+  ├── android/app/src/main/kotlin/.../services/ProcessForegroundService.kt
+  └── android/app/src/main/kotlin/.../services/InferenceForegroundService.kt
+
+  CONFIGURATION
+  ├── pubspec.yaml
+  ├── analysis_options.yaml
+  └── test/widget_test.dart
+
+================================================================================
+  END OF SUMMARY
+================================================================================
