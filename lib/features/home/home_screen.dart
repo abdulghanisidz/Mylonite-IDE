@@ -85,6 +85,14 @@ class HomeScreen extends ConsumerWidget {
               subtitle: 'Download and activate local AI models',
               onTap: () => context.push(kRouteModelManager),
             ),
+            const SizedBox(height: 10),
+            // Phase 4 test (remove after testing)
+            _QuickActionCard(
+              icon: Icons.bug_report_outlined,
+              title: 'Process Test',
+              subtitle: 'Test execution engine (Phase 4)',
+              onTap: () => context.push(kRouteProcessTest),
+            ),
 
             // ── Recent projects ────────────────────────────────────────
             if (projects.isNotEmpty) ...[

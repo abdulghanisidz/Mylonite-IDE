@@ -13,3 +13,6 @@ const String kRouteAgent = '/agent';
 const String kRouteSettings = '/settings';
 const String kRouteRuntimeManager = '/runtime-manager';
 const String kRouteModelManager = '/model-manager';
+
+// Phase 4 test route (remove after testing)
+const String kRouteProcessTest = '/process-test';

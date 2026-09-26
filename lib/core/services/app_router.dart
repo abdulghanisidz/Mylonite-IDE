@@ -6,6 +6,7 @@ import '../../features/editor/editor_screen.dart';
 import '../../features/explorer/explorer_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/model_manager/model_manager_screen.dart';
+import '../../features/process_test/process_test_screen.dart';
 import '../../features/projects/projects_screen.dart';
 import '../../features/runtime_manager/runtime_manager_screen.dart';
 import '../../features/settings/settings_screen.dart';
@@ -33,56 +34,66 @@ class AppRouter {
             _AppShell(navigationShell: navigationShell),
         branches: [
           // Tab 0 — Home / Projects
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: kRouteHome,
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: HomeScreen()),
-              routes: [
-                GoRoute(
-                  path: 'projects',
-                  pageBuilder: (context, state) =>
-                      const NoTransitionPage(child: ProjectsScreen()),
-                ),
-              ],
-            ),
-          ]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: kRouteHome,
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: HomeScreen()),
+                routes: [
+                  GoRoute(
+                    path: 'projects',
+                    pageBuilder: (context, state) =>
+                        const NoTransitionPage(child: ProjectsScreen()),
+                  ),
+                ],
+              ),
+            ],
+          ),
 
           // Tab 1 — Code Editor
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: kRouteEditor,
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: EditorScreen()),
-            ),
-          ]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: kRouteEditor,
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: EditorScreen()),
+              ),
+            ],
+          ),
 
           // Tab 2 — File Explorer
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: kRouteExplorer,
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: ExplorerScreen()),
-            ),
-          ]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: kRouteExplorer,
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: ExplorerScreen()),
+              ),
+            ],
+          ),
 
           // Tab 3 — Terminal
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: kRouteTerminal,
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: TerminalScreen()),
-            ),
-          ]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: kRouteTerminal,
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: TerminalScreen()),
+              ),
+            ],
+          ),
 
           // Tab 4 — AI Agent
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: kRouteAgent,
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: AgentScreen()),
-            ),
-          ]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: kRouteAgent,
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: AgentScreen()),
+              ),
+            ],
+          ),
         ],
       ),
 
@@ -98,6 +109,11 @@ class AppRouter {
       GoRoute(
         path: kRouteModelManager,
         builder: (context, state) => const ModelManagerScreen(),
+      ),
+      // Phase 4 test route (remove after testing)
+      GoRoute(
+        path: kRouteProcessTest,
+        builder: (context, state) => const ProcessTestScreen(),
       ),
     ],
   );
