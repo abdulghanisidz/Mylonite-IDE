@@ -7,7 +7,7 @@
 [![Dart](https://img.shields.io/badge/Dart-3.13.1-blue?logo=dart)](https://dart.dev)
 [![Android](https://img.shields.io/badge/Android-API%2026%2B-green?logo=android)](https://developer.android.com)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
-[![Phase](https://img.shields.io/badge/Phase-3%20%E2%80%94%20Editor-purple)]()
+[![Phase](https://img.shields.io/badge/Phase-4%20%E2%80%94%20Execution%20Engine-purple)]()
 
 ---
 
@@ -42,6 +42,10 @@ All without internet.
 | Diagnostic status bar (error/warning count) | ✅ Complete |
 | Encrypted API key storage (Android Keystore) | ✅ Complete |
 | Agent session audit trail | ✅ Complete |
+| ProcessService — process spawning, streaming, lifecycle | ✅ Complete |
+| ProcessChannel — Dart ↔ Kotlin bridge with EventChannel | ✅ Complete |
+| Foreground service for long-running processes | ✅ Complete |
+| Process timeout, OOM detection, SIGTERM/SIGKILL | ✅ Complete |
 
 ---
 
@@ -130,8 +134,8 @@ Mylonite-IDE/
 | 2A | Project & Workspace Management | ✅ Done |
 | 2B | File Ops, SAF, ZIP Import/Export | ✅ Done |
 | 3 | Code Editor | ✅ Done |
-| 4 | Execution Engine (Android process management) | 🔜 Next |
-| 5 | Python Runtime (CPython ARM64) | 🔜 |
+| 4 | Execution Engine (Android process management) | ✅ Done |
+| 5 | Python Runtime (CPython ARM64) | 🔜 Next |
 | 6 | JavaScript Runtime (QuickJS ARM64) | 🔜 |
 | 7 | Terminal & Process Manager | 🔜 |
 | 8 | AI Provider Abstraction | 🔜 |
