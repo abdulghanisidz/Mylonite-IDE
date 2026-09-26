@@ -8,6 +8,7 @@ import 'core/services/app_router.dart';
 import 'core/services/logging_service.dart';
 import 'core/services/project_manager.dart';
 import 'core/services/settings_service.dart';
+import 'core/services/runtime/python_runtime.dart';
 import 'ui/theme/app_theme.dart';
 
 /// Application entry point for Mylonite IDE.
@@ -16,7 +17,8 @@ import 'ui/theme/app_theme.dart';
 ///   1. Lock orientation to portrait
 ///   2. Load SettingsService from disk
 ///   3. Load all project metadata (ProjectManager.loadAll)
-///   4. Launch the Flutter widget tree under ProviderScope
+///   4. Initialize Python runtime (Phase 5)
+///   5. Launch the Flutter widget tree under ProviderScope
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -37,7 +39,11 @@ Future<void> main() async {
   await SettingsService.instance.load();
   await ProjectManager.instance.loadAll();
 
-  log.info(LogSubsystem.core, 'Mylonite IDE starting — Phase 3.');
+  // Phase 5: Initialize Python runtime
+  log.info(LogSubsystem.core, 'Initializing Python runtime...');
+  await PythonRuntime.instance.initialize();
+
+  log.info(LogSubsystem.core, 'Mylonite IDE starting — Phase 5.');
 
   runApp(const ProviderScope(child: MyloniteApp()));
 }

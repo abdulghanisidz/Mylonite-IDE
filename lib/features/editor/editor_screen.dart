@@ -7,8 +7,10 @@ import 'package:highlight/languages/python.dart';
 
 import '../../core/models/enums.dart';
 import '../../core/providers/project_providers.dart';
+import '../../core/providers/runtime_providers.dart';
 import '../../core/services/editor/editor_controller.dart';
 import '../../ui/theme/app_theme.dart';
+import '../../core/services/logging_service.dart';
 
 /// Mylonite IDE — Code Editor screen.
 ///
@@ -54,6 +56,110 @@ class _EditorScreenState extends ConsumerState<EditorScreen>
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       ref.read(editorControllerProvider)?.onAppBackground();
+    }
+  }
+
+  // ── Run Python code ───────────────────────────────────────────────────────
+
+  /// Execute the currently active Python file.
+  Future<void> _runPythonFile(EditorController ec) async {
+    final tab = ec.activeTab;
+    if (tab == null) return;
+
+    // Only run Python files
+    if (tab.language != Language.python) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Only Python files can be executed')),
+      );
+      return;
+    }
+
+    // Save file first if dirty
+    if (tab.isDirty) {
+      await ec.saveActive();
+    }
+
+    // Get Python runtime
+    final pythonRuntime = ref.read(pythonRuntimeProvider);
+
+    // Check if Python is installed
+    if (!pythonRuntime.isInstalled) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Python runtime not available. Install Python to run code.',
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
+    // Show executing status
+    ref.read(isExecutingProvider.notifier).state = true;
+
+    try {
+      log.info(
+        LogSubsystem.runtime,
+        'Executing Python file: ${tab.relativePath}',
+      );
+
+      // Get workspace directory
+      final workspace = ref.read(workspaceManagerProvider);
+      if (workspace == null) return;
+
+      // Build absolute path
+      final absolutePath = '${workspace.workspaceRoot}/${tab.relativePath}';
+
+      // Execute the file
+      final result = await pythonRuntime.executeFile(
+        filePath: absolutePath,
+        workingDirectory: workspace.workspaceRoot,
+        timeout: const Duration(seconds: 60),
+      );
+
+      // Store result for Terminal screen
+      ref.read(currentExecutionResultProvider.notifier).state = result;
+
+      // Show result notification
+      if (mounted) {
+        final message = result.isSuccess
+            ? 'Execution completed successfully'
+            : result.timedOut
+            ? 'Execution timed out'
+            : result.oomKilled
+            ? 'Process killed (out of memory)'
+            : 'Execution failed with exit code ${result.exitCode}';
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: result.isSuccess
+                ? Colors.green.shade700
+                : Colors.red.shade700,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+
+      log.info(
+        LogSubsystem.runtime,
+        'Execution complete: ${result.statusMessage}, duration: ${result.executionTime.inMilliseconds}ms',
+      );
+    } catch (e) {
+      log.error(LogSubsystem.runtime, 'Execution error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Execution error: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    } finally {
+      ref.read(isExecutingProvider.notifier).state = false;
     }
   }
 
@@ -188,9 +294,13 @@ class _EditorScreenState extends ConsumerState<EditorScreen>
           // Run (Phase 5)
           IconButton(
             icon: const Icon(Icons.play_arrow_outlined, size: 20),
-            tooltip: 'Run (Phase 5)',
+            tooltip: 'Run Python file',
             color: AppColors.secondary,
-            onPressed: null,
+            onPressed:
+                ec.activeTab?.language == Language.python &&
+                    !ref.watch(isExecutingProvider)
+                ? () => _runPythonFile(ec)
+                : null,
           ),
         ],
       ),

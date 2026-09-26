@@ -3,9 +3,9 @@ package com.offlinemobileide.aioide.channels
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.fragment.app.FragmentActivity
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -31,9 +31,12 @@ import io.flutter.plugin.common.MethodChannel
  * Architecture: 02-ARCHITECTURE.md §9.2, 06-SECURITY.md §20.2
  */
 class StorageChannel(
-    private val activity: FragmentActivity,
+    context: Context,
     messenger: BinaryMessenger,
 ) : MethodChannel.MethodCallHandler {
+
+    // Cast to ComponentActivity internally to avoid weird Kotlin class resolution issues
+    private val activity: ComponentActivity = context as ComponentActivity
 
     companion object {
         const val METHOD_CHANNEL = "ide/storage"

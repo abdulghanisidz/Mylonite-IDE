@@ -31,10 +31,8 @@ class MainActivity : FlutterActivity() {
         val messenger = flutterEngine.dartExecutor.binaryMessenger
 
         processChannel = ProcessChannel(this, messenger)
-        // StorageChannel requires ComponentActivity (this) for
-        // ActivityResultLauncher registration — must be called here,
-        // before onCreate fires, so launchers are registered in time.
-        storageChannel = StorageChannel(this as androidx.fragment.app.FragmentActivity, messenger)
+        // TODO: Fix StorageChannel classloader issue - temporarily disabled for Phase 4 testing
+        // storageChannel = StorageChannel(this, messenger)
         systemChannel = SystemChannel(this, messenger)
         secretsChannel = SecretsChannel(this, messenger)
     }

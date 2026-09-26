@@ -86,6 +86,10 @@ class ProcessChannel(
                     startForegroundService()
                 }
 
+                // Use a lateinit var that will be initialized before callbacks fire
+                lateinit var currentSessionId: String
+
+                // Spawn the process with callbacks
                 val handle = processService.spawnProcess(
                     argv = argv,
                     workingDirectory = workingDirectory,
@@ -94,14 +98,14 @@ class ProcessChannel(
                     timeoutSeconds = timeoutSeconds,
                     onOutput = { type, content ->
                         outputStreamHandler.sendOutput(
-                            sessionId = handle.sessionId,
+                            sessionId = currentSessionId,
                             type = type,
                             content = content
                         )
                     },
                     onExit = { exitCode, timedOut, oomKilled ->
                         outputStreamHandler.sendExit(
-                            sessionId = handle.sessionId,
+                            sessionId = currentSessionId,
                             exitCode = exitCode,
                             timedOut = timedOut,
                             oomKilled = oomKilled
@@ -112,6 +116,9 @@ class ProcessChannel(
                         }
                     }
                 )
+
+                // Initialize the session ID immediately after spawn
+                currentSessionId = handle.sessionId
 
                 result.success(
                     mapOf(

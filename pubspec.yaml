@@ -27,6 +27,7 @@ dependencies:
 
   # ── ZIP / Archive ──────────────────────────────────────────────────────────
   archive: ^3.6.1
+  http: ^1.2.0
 
   # ── Code Editor ───────────────────────────────────────────────────────────
   # flutter_code_editor: syntax highlighting (100+ languages via highlight.dart),

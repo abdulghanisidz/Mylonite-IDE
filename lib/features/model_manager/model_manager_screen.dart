@@ -1,156 +1,309 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/models/enums.dart';
+import '../../core/models/ai_model.dart';
+import '../../core/services/ai/model_download_service.dart';
+import '../../core/services/ai/inference_service.dart';
 import '../../ui/theme/app_theme.dart';
 
-/// Model Manager screen — download, import, activate, and delete AI models.
+/// Model Manager screen — download, view, and manage AI models.
 ///
-/// Phase 1: Shell with static placeholder model entries.
-/// Phase 9: Wired to ModelManager and LocalAIProvider.
+/// Phase 1: Shell with static placeholder entries.
+/// Phase 9: Wired to ModelDownloadService and InferenceService. ✅ DONE
 ///
-/// Architecture: 05-OFFLINE-AI.md §14, FR-076–FR-082
-class ModelManagerScreen extends StatelessWidget {
+/// Architecture: 05-OFFLINE-AI.md §8, FR-056–FR-068
+class ModelManagerScreen extends ConsumerStatefulWidget {
   const ModelManagerScreen({super.key});
+
+  @override
+  ConsumerState<ModelManagerScreen> createState() => _ModelManagerScreenState();
+}
+
+class _ModelManagerScreenState extends ConsumerState<ModelManagerScreen> {
+  final _downloadService = ModelDownloadService.instance;
+  final _inferenceService = InferenceService.instance;
+
+  // Track download states
+  final Map<String, ModelDownloadState> _downloadStates = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _checkInstalledModels();
+  }
+
+  /// Check which models are already downloaded.
+  Future<void> _checkInstalledModels() async {
+    for (final model in AvailableModels.all) {
+      final isInstalled = await _downloadService.isModelDownloaded(model.id);
+      if (isInstalled && mounted) {
+        setState(() {});
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Model Manager'),
+        title: const Text('AI Models'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.file_open_outlined),
-            tooltip: 'Import model from storage',
-            onPressed: null,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: () {
+              setState(() {
+                _checkInstalledModels();
+              });
+            },
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const _StorageSummaryCard(),
-          const SizedBox(height: 16),
-          Text(
-            'RECOMMENDED MODELS',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
-              color: AppColors.primary,
-            ),
+      body: FutureBuilder<List<bool>>(
+        future: Future.wait(
+          AvailableModels.all.map(
+            (m) => _downloadService.isModelDownloaded(m.id),
           ),
-          const SizedBox(height: 8),
-          const _ModelCard(
-            name: 'Qwen2.5-Coder 1.5B',
-            family: 'Qwen2.5',
-            quantization: ModelQuantization.q4_k_m,
-            profile: ModelProfile.tiny,
-            fileSizeMb: 940,
-            estimatedRamMb: 1100,
-            contextLength: 4096,
-            isActive: false,
-            isInstalled: false,
-          ),
-          const SizedBox(height: 12),
-          const _ModelCard(
-            name: 'Qwen2.5-Coder 3B',
-            family: 'Qwen2.5',
-            quantization: ModelQuantization.q4_k_m,
-            profile: ModelProfile.balanced,
-            fileSizeMb: 1900,
-            estimatedRamMb: 2200,
-            contextLength: 8192,
-            isActive: false,
-            isInstalled: false,
-          ),
-          const SizedBox(height: 12),
-          const _ModelCard(
-            name: 'Phi-3 Mini 4K',
-            family: 'Phi-3',
-            quantization: ModelQuantization.q4_k_m,
-            profile: ModelProfile.balanced,
-            fileSizeMb: 2200,
-            estimatedRamMb: 2600,
-            contextLength: 4096,
-            isActive: false,
-            isInstalled: false,
-          ),
-          const SizedBox(height: 32),
-        ],
+        ),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final installedStates = snapshot.data!;
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: AvailableModels.all.length,
+            itemBuilder: (context, index) {
+              final model = AvailableModels.all[index];
+              final isInstalled = installedStates[index];
+              final downloadState = _downloadStates[model.id];
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _ModelCard(
+                  model: model,
+                  isInstalled: isInstalled,
+                  downloadState: downloadState,
+                  onDownload: () => _downloadModel(model),
+                  onCancel: () => _cancelDownload(model),
+                  onDelete: () => _deleteModel(model),
+                  onLoad: () => _loadModel(model),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
-}
 
-class _StorageSummaryCard extends StatelessWidget {
-  const _StorageSummaryCard();
+  /// Download a model.
+  Future<void> _downloadModel(AIModel model) async {
+    if (_downloadStates.containsKey(model.id)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${model.name} is already downloading')),
+      );
+      return;
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
+    // Confirm download
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Download Model'),
+        content: Text(
+          'Download ${model.name}?\n\n'
+          'Size: ${model.fileSizeFormatted}\n'
+          'RAM Required: ${model.minRamMB} MB',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Download'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    // Start download
+    setState(() {
+      _downloadStates[model.id] = ModelDownloadState(
+        modelId: model.id,
+        status: DownloadStatus.downloading,
+        progress: 0.0,
+        bytesDownloaded: 0,
+        totalBytes: model.fileSizeBytes,
+      );
+    });
+
+    final result = await _downloadService.downloadModel(
+      modelId: model.id,
+      downloadUrl: model.downloadUrl,
+      onProgress: (progress, downloaded, total) {
+        if (mounted) {
+          setState(() {
+            _downloadStates[model.id] = ModelDownloadState(
+              modelId: model.id,
+              status: DownloadStatus.downloading,
+              progress: progress,
+              bytesDownloaded: downloaded,
+              totalBytes: total,
+            );
+          });
+        }
+      },
+    );
+
+    if (result != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${model.name} downloaded successfully'),
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+        setState(() {
+          _downloadStates.remove(model.id);
+        });
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to download ${model.name}'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+        setState(() {
+          _downloadStates.remove(model.id);
+        });
+      }
+    }
+  }
+
+  /// Cancel a download.
+  void _cancelDownload(AIModel model) {
+    _downloadService.cancelDownload(model.id);
+    setState(() {
+      _downloadStates.remove(model.id);
+    });
+  }
+
+  /// Delete a model.
+  Future<void> _deleteModel(AIModel model) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Model'),
+        content: Text(
+          'Delete ${model.name}?\n\n'
+          'This will free ${model.fileSizeFormatted} of storage.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final success = await _downloadService.deleteModel(model.id);
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('${model.name} deleted')));
+        setState(() {});
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete ${model.name}'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Load a model for inference.
+  Future<void> _loadModel(AIModel model) async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.storage_outlined, color: AppColors.primary),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Model Storage',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '0 models installed · 0 MB used',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.onSurface
-                          .withValues(alpha: 0.5),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text('Loading ${model.name}...'),
           ],
         ),
       ),
     );
+
+    final success = await _inferenceService.loadModel(model.id);
+
+    if (mounted) {
+      Navigator.pop(context); // Close loading dialog
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${model.name} loaded and ready'),
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load ${model.name}'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
   }
 }
 
 class _ModelCard extends StatelessWidget {
   const _ModelCard({
-    required this.name,
-    required this.family,
-    required this.quantization,
-    required this.profile,
-    required this.fileSizeMb,
-    required this.estimatedRamMb,
-    required this.contextLength,
-    required this.isActive,
+    required this.model,
     required this.isInstalled,
+    required this.downloadState,
+    required this.onDownload,
+    required this.onCancel,
+    required this.onDelete,
+    required this.onLoad,
   });
 
-  final String name;
-  final String family;
-  final ModelQuantization quantization;
-  final ModelProfile profile;
-  final int fileSizeMb;
-  final int estimatedRamMb;
-  final int contextLength;
-  final bool isActive;
+  final AIModel model;
   final bool isInstalled;
+  final ModelDownloadState? downloadState;
+  final VoidCallback onDownload;
+  final VoidCallback onCancel;
+  final VoidCallback onDelete;
+  final VoidCallback onLoad;
 
   @override
   Widget build(BuildContext context) {
-    final profileColor = switch (profile) {
-      ModelProfile.tiny => AppColors.secondary,
-      ModelProfile.balanced => AppColors.primary,
-      ModelProfile.power => AppColors.warning,
-    };
+    final isDownloading = downloadState?.status == DownloadStatus.downloading;
 
     return Card(
       child: Padding(
@@ -158,71 +311,93 @@ class _ModelCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header
             Row(
               children: [
+                Icon(Icons.memory, color: AppColors.primary, size: 20),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        name,
+                        model.name,
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                          fontSize: 15,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '$family · ${quantization.label}',
+                        model.description,
                         style: TextStyle(
                           fontSize: 12,
                           color: Theme.of(context).colorScheme.onSurface
-                              .withValues(alpha: 0.5),
+                              .withValues(alpha: 0.6),
                         ),
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: profileColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    profile.displayName,
-                    style: TextStyle(color: profileColor, fontSize: 11),
-                  ),
-                ),
+                const SizedBox(width: 8),
+                _buildStatusChip(context),
               ],
             ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 16,
-              runSpacing: 4,
-              children: [
-                _StatChip(Icons.save_outlined, '$fileSizeMb MB'),
-                _StatChip(Icons.memory_outlined, '~$estimatedRamMb MB RAM'),
-                _StatChip(Icons.wrap_text, '${contextLength ~/ 1024}K context'),
-              ],
-            ),
+
             const SizedBox(height: 12),
+
+            // Model info
+            _InfoRow('Size', model.fileSizeFormatted),
+            _InfoRow('Quantization', model.quantization),
+            _InfoRow(
+              'Context',
+              '${model.capabilities.maxContextLength} tokens',
+            ),
+            _InfoRow('Min RAM', '${model.minRamMB} MB'),
+
+            // Download progress
+            if (isDownloading) ...[
+              const SizedBox(height: 12),
+              LinearProgressIndicator(
+                value: downloadState!.progress,
+                backgroundColor: AppColors.darkSurfaceVariant,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                downloadState!.statusMessage,
+                style: const TextStyle(fontSize: 11),
+              ),
+            ],
+
+            const SizedBox(height: 12),
+
+            // Actions
             Row(
               children: [
-                if (!isInstalled)
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.download, size: 16),
-                    label: Text('Download · $fileSizeMb MB'),
-                    onPressed: null,
+                if (!isInstalled && !isDownloading)
+                  Expanded(
+                    child: FilledButton.icon(
+                      icon: const Icon(Icons.download, size: 16),
+                      label: const Text('Download'),
+                      onPressed: onDownload,
+                    ),
                   ),
-                if (isInstalled && !isActive) ...[
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.play_circle_outline, size: 16),
-                    label: const Text('Activate'),
-                    onPressed: null,
+                if (isDownloading) ...[
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.cancel, size: 16),
+                      label: const Text('Cancel'),
+                      onPressed: onCancel,
+                    ),
+                  ),
+                ],
+                if (isInstalled) ...[
+                  Expanded(
+                    child: FilledButton.icon(
+                      icon: const Icon(Icons.play_arrow, size: 16),
+                      label: const Text('Load Model'),
+                      onPressed: onLoad,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   OutlinedButton.icon(
@@ -231,20 +406,9 @@ class _ModelCard extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.error,
                     ),
-                    onPressed: null,
+                    onPressed: onDelete,
                   ),
                 ],
-                if (isActive)
-                  Chip(
-                    avatar: const Icon(
-                      Icons.check_circle,
-                      size: 14,
-                      color: AppColors.secondary,
-                    ),
-                    label: const Text('Active'),
-                    backgroundColor: AppColors.secondary.withValues(alpha: 0.1),
-                    side: const BorderSide(color: AppColors.secondary),
-                  ),
               ],
             ),
           ],
@@ -252,33 +416,72 @@ class _ModelCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildStatusChip(BuildContext context) {
+    if (downloadState?.status == DownloadStatus.downloading) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          'DOWNLOADING',
+          style: TextStyle(color: AppColors.primary, fontSize: 11),
+        ),
+      );
+    }
+
+    if (isInstalled) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: AppColors.secondary.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          'INSTALLED',
+          style: TextStyle(color: AppColors.secondary, fontSize: 11),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.darkSurfaceVariant,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: const Text('NOT INSTALLED', style: TextStyle(fontSize: 11)),
+    );
+  }
 }
 
-class _StatChip extends StatelessWidget {
-  const _StatChip(this.icon, this.label);
-  final IconData icon;
+class _InfoRow extends StatelessWidget {
+  const _InfoRow(this.label, this.value);
   final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          icon,
-          size: 13,
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Theme.of(context).colorScheme.onSurface
-                .withValues(alpha: 0.6),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurface
+                    .withValues(alpha: 0.5),
+              ),
+            ),
           ),
-        ),
-      ],
+          Text(value, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
     );
   }
 }
